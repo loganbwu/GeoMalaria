@@ -27,53 +27,61 @@ n_people = 100
 max_mosquito_lifespan = 56 # days
 max_human_infectivity = 100 # days
 max_mosquito_flight_range = 8 # km
-p_infect = 0.2 # probability of infection for 1 mosquito/cell/day
+p_infect_unit = 0.01 # probability of infection for 1 mosquito/cell/day
 ```
 
 # Initialisation
 
 ```{r}
 t = 0
-
-people = tibble(
-  ID = seq_len(n_people),
-  X = runif(n_people, max=10),
-  Y = runif(n_people, max=10),
-  infected = runif(n_people) < 0.1,
-  t_infection = ifelse(infected, t, NA),
-  infectious = F
-)
-
-mosquito_dens = env
-mosquito_dens[] = runif(ncell(mosquito_dens), max=100)
-mosquito_dens = focal(mosquito_dens, matrix(1,3,3), mean, na.rm=T, pad=T)
-names(mosquito_dens) = "mosquito_migration"
-
-mosquito_infected = tibble()
-
-init_data = as.data.frame(mosquito_dens, xy=T) %>%
-  rename(X = x, Y = y)
-init_plot = ggplot(mapping=aes(x=X, y=Y)) +
-  geom_raster(data=init_data, aes(fill=mosquito_migration)) +
-  geom_point(data=people) +
-  coord_equal() +
-  scale_fill_viridis_c(option="magma") +
-  scale_color_manual(values=c("Today"="tomato", "Historical"="steelblue", "None"="white"))
+init = function() {
+  t <<- 0
+  
+  people <<- tibble(
+    ID = seq_len(n_people),
+    X = runif(n_people, max=10),
+    Y = runif(n_people, max=10),
+    infected = runif(n_people) < 0.1,
+    t_infection = ifelse(infected, t, NA),
+    infectious = F
+  )
+  
+  mosquito_dens = env
+  mosquito_dens[] = runif(ncell(mosquito_dens), max=100)
+  mosquito_dens <<- focal(mosquito_dens, matrix(1,3,3), mean, na.rm=T, pad=T)
+  names(mosquito_dens) <<- "mosquito_migration"
+  
+  mosquito_infected <<- tibble()
+  
+  init_data = as.data.frame(mosquito_dens, xy=T) %>%
+    rename(X = x, Y = y)
+  init_plot = ggplot(mapping=aes(x=X, y=Y)) +
+    geom_raster(data=init_data, aes(fill=mosquito_migration)) +
+    geom_point(data=people) +
+    coord_equal() +
+    scale_fill_viridis_c(option="magma") +
+    scale_color_manual(values=c("Today"="tomato", "Historical"="steelblue", "None"="white"))
+}
 ```
 
 Time step
 
 ```{r}
-iterate = function() {
-  t <<- t + 10
+iter = function(dt) {
+  t <<- t + dt
+  # convert daily unit probability to probability across dt (units of days)
+  k = -log(1-p_infect_unit)
+  log_S_dt = -k * dt
+  
+  # Calculate current state of people
   people <<- people %>%
     mutate(infectious = human_infectivity(t - t_infection))
   # Expose mosquitos and add to current infected mosquitos
   new_mosquito_infected <<- people %>%
     filter(infectious) %>%
     select(X, Y) %>%
-    mutate(native_density = NA_real_,
-           native_density = my_extract(mosquito_dens, .),
+    # Infect mosquitos at rate (assume no susc. depletion)
+    mutate(event_density = my_extract(mosquito_dens, .) * dt,
            t_event = t)
   mosquito_infected <<- bind_rows(mosquito_infected, new_mosquito_infected) %>%
     # Remove old events
@@ -90,8 +98,8 @@ iterate = function() {
     select(-X.y, -Y.y) %>%
     rename(X=X.x, Y=Y.x) %>%
     filter(distance < max_mosquito_flight_range) %>%
-    mutate(dispersed_density = native_density * infectivity * mosquito_migration(distance, t-t_event),
-           log_p_noinfect = dispersed_density * log(1-p_infect),
+    mutate(dispersed_density = event_density * infectivity * mosquito_migration(distance, t-t_event),
+           log_p_noinfect = dispersed_density * log_S_dt,
     ) %>%
     group_by(ID) %>%
     summarise(p_infect = 1 - exp(sum(log_p_noinfect))) %>%
@@ -112,7 +120,7 @@ iterate = function() {
                                  t_infection < t ~ "Historical",
                                  TRUE ~ "None"))
   
-  plot_mosquitoes = as.data.frame(env_vis, xy=T) %>%
+  plot_mosquitoes <<- as.data.frame(env_vis, xy=T) %>%
     mutate(ID = row_number()) %>%
     rename(X = x, Y = y) %>%
     merge(mosquito_infected, by=character()) %>%
@@ -121,18 +129,18 @@ iterate = function() {
     select(-X.y, -Y.y) %>%
     rename(X=X.x, Y=Y.x) %>%
     filter(distance < max_mosquito_flight_range) %>%
-    mutate(dispersed_density = native_density * infectivity * mosquito_migration(distance, t-t_event),
-           log_p_noinfect = dispersed_density * log(1-p_infect),
+    mutate(dispersed_density = event_density * infectivity * mosquito_migration(distance, t-t_event),
+           log_p_noinfect = dispersed_density * log_S_dt,
     ) %>%
     group_by(X, Y) %>%
     summarise(p_infect = 1 - exp(sum(log_p_noinfect)),
               .groups = "drop")
-
+  
   step_plot <<- ggplot(plot_mosquitoes, aes(x=X, y=Y)) +
     geom_raster(aes(fill=p_infect), data=plot_mosquitoes) +
     geom_point(aes(color=Infection), data=plot_people) +
     coord_equal() +
-    scale_fill_viridis_c(option="inferno", limits=c(0, 0.5)) +
+    scale_fill_viridis_c(option="inferno", limits=c(0, 1)) +
     scale_color_manual(values=c("Today"="tomato", "Historical"="steelblue", "None"="grey")) +
     labs(title = paste("t =", t))
   print(step_plot)
