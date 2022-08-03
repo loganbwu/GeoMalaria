@@ -7,7 +7,7 @@ Simulation = R6Class(
     t = 0,
     mosquito_raster = NULL,
     n_people = NULL,
-    max_mosquito_lifespan = NULL,
+    max_mosquito_lifespan = 0,
     max_human_infectivity = NULL,
     max_mosquito_flight_range = NULL,
     bite_rate = NULL,
@@ -20,9 +20,7 @@ Simulation = R6Class(
     
     initialize = function(env_dimensions,
                           n_people,
-                          max_mosquito_lifespan, # days
                           max_human_infectivity, # days
-                          max_mosquito_flight_range, # km
                           bite_rate) { # probability of infection for 1 mosquito/cell/day
       
       # Raster for environmental effects
@@ -38,10 +36,16 @@ Simulation = R6Class(
       
       # Parameters
       self$n_people = n_people
-      self$max_mosquito_lifespan = max_mosquito_lifespan
       self$max_human_infectivity = max_human_infectivity
-      self$max_mosquito_flight_range = max_mosquito_flight_range
       self$bite_rate = bite_rate # bites per person per mosquito in cell per day, e.g., bite_rate=1 means a person is bitten by the number of mosquitoes in the cell on average
+      
+      # Calculate reasonable mosquito bounds
+      # capture the vast majority of the mosquito lifespan
+      while (private$mosquito_survival(self$max_mosquito_lifespan) > 0.01) {
+        self$max_mosquito_lifespan = self$max_mosquito_lifespan + 1
+      }
+      # Capture 95% of the distance travelled at the max lifespan
+      self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(private$mosquito_travel * self$max_mosquito_lifespan))
       
       # Initialise data
       # People
@@ -60,22 +64,23 @@ Simulation = R6Class(
       names(self$mosquito_raster) = "count"
     },
     
+    
     plot_init = function() {
       mosquito_data = as.data.frame(self$mosquito_raster, xy=T) %>%
         rename(X = x, Y = y)
       humans = self$people %>%
-        mutate(Infection = case_when(t_infection == self$t ~ "Today",
-                                     t_infection < self$t ~ "Historical",
+        mutate(Infection = case_when(t_infection == self$t ~ "Importation",
                                      TRUE ~ "None"))
       ggplot(mapping = aes(x=X, y=Y)) +
         geom_raster(data = mosquito_data, aes(fill=count)) +
         geom_point(data = humans, aes(color=Infection)) +
         coord_equal() +
         scale_fill_viridis_c(option = "magma") +
-        scale_color_manual(values = c("Today"="tomato",
-                                      "Historical"="steelblue",
-                                      "None"="white"))
+        scale_color_manual(values = c("Importation"="tomato",
+                                      "None"="white")) +
+        labs(fill = "Mos/km^2")
     },
+    
     
     iterate = function(dt) {
       self$t = self$t + dt
@@ -103,7 +108,8 @@ Simulation = R6Class(
         filter(self$t - t_inoculation < self$max_mosquito_lifespan) %>%
         # Calculate current infectivity of infected mosquito clouds integrated over space   # Number of live mosquitoes with mature sporozoites from this event
         mutate(infectious_count = infected_count *
-                 private$mosquito_infectivity(self$t - t_inoculation))
+                 private$mosquito_survival(self$t - t_inoculation) *
+                 private$mosquito_sporogony(self$t - t_inoculation))
       
       # Expose and infect people
       new_human_infections = self$people %>%
@@ -118,12 +124,13 @@ Simulation = R6Class(
                  private$mosquito_migration(distance, self$t-t_inoculation),
                ento_inoculation_rate = human_biting_rate *
                  self$sporozoite_infection_rate, # EIR = HBR * SIR
-               infect = rpois(nrow(.), ento_inoculation_rate * dt) > 0,
+               # shortcut for P(x) > 0, x ~Pois(EIR*dt)
+               infect = runif(nrow(.)) > exp(-ento_inoculation_rate * dt)
         ) %>%
         filter(infect) %>%
         distinct(ID)
       
-      print(paste("Infected", nrow(new_human_infections), "people"))
+      # print(paste("Infected", nrow(new_human_infections), "people"))
       
       # Update population
       self$people$infected[new_human_infections$ID] = TRUE
@@ -169,9 +176,46 @@ Simulation = R6Class(
         theme(legend.key.height = unit(10, "pt"))
     },
     
-    plot_mosquito_survival = function() {
-      dt = seq(0, self$max_mosquito_lifespan)
-      qplot(dt, private$mosquito_survival(dt), geom="line")
+    plot_epicurve = function() {
+      self$people %>%
+        ggplot(aes(x = t_infection)) +
+        geom_bar()
+    },
+    
+    #' Plot spread of mosquitoes over distance
+    plot_mosquito_migration = function() {
+      DX = seq(-1.1 * self$max_mosquito_flight_range,
+               1.1 * self$max_mosquito_flight_range,
+               length.out = 100)
+      DT = seq(1, self$max_mosquito_lifespan, length.out=7)
+      DXDT = expand.grid(dx=DX, dt=DT) %>%
+        mutate(density = private$mosquito_migration(dx, dt))
+      with(DXDT, qplot(dx, density, color=dt, group=dt, geom="line") +
+             geom_vline(xintercept=c(-1,1) * self$max_mosquito_flight_range) +
+             scale_color_continuous(breaks = DT) +
+             labs(x = "Distance", color = "Days since\nblood meal")
+      )
+    },
+    
+    
+    plot_mosquito_infectivity = function() {
+      tibble(dt = seq(0, self$max_mosquito_lifespan, length.out=1000),
+             survival = private$mosquito_survival(dt),
+             sporozoites = private$mosquito_sporogony(dt),
+             infectivity = survival*sporozoites) %>%
+        pivot_longer(cols = -dt) %>%
+        ggplot(aes(x = dt, y = value, color = name, linetype = name)) +
+        geom_line() +
+        labs(x = "Days since blood meal", y = "Probability")
+    },
+    
+    plot_human_infectivity = function() {
+      tibble(dt = seq(0, self$max_human_infectivity, length.out=1000),
+             gametocyte_load = private$human_infectivity(dt)) %>%
+        ggplot(aes(x = dt, y = gametocyte_load)) +
+        geom_line() +
+        labs(title = "Probability of inoculating a biting mosquito",
+             x = "Days since infection", y = "Probability")
     }
   ),
   
@@ -181,33 +225,15 @@ Simulation = R6Class(
     env_raster = NULL,
     vis_raster = NULL,
     
-    #' Lifecycle stages for P. vivax in mosquitos after a blood meal
-    #'
-    #' @param t days since blood meal
-    #' 
-    #' @return boolean vector TRUE if mosquito is infectious
-    vivax_mosquito_lifecycle = function(t) {
-      t_sporogony = runif(length(t), 8, 10)
-      infectious = t > t_sporogony
-      ifelse(is.na(infectious), F, infectious)
-    },
-    
     #' Proportion of mosquitoes that survive over time
     mosquito_survival = function(dt) {
       rate = 0.25 # death rate per day
       survival = dexp(dt, rate=rate) / rate
     },
     
-    #' Infectivity of the vivax parasite in mosquitoes over time
+    #' Proportion of mosquitoes with sporozoites over time
     mosquito_sporogony = function(dt) {
-      t_sporogony = runif(length(dt), 8, 10)
-      as.numeric(dt >= t_sporogony)
-    },
-    
-    #' Overall infectivity of a mosquito after an infected blood meal
-    mosquito_infectivity = function(dt) {
-      private$mosquito_survival(dt) *
-        private$mosquito_sporogony(dt)
+      approx(c(8, 10), c(0, 1), dt, yleft=0, yright=1)$y
     },
     
     # 1-D variance of mosquito travel in (km/day)^2
@@ -222,8 +248,10 @@ Simulation = R6Class(
     #' 
     #' @return vector of probability of infecting mosquito with gametocytes in the grid cell
     human_infectivity = function(dt) {
-      t_incubation = runif(length(dt), 12, 17)
-      infectivity = as.numeric(dt > t_incubation & dt < self$max_human_infectivity)
+      infectivity = approx(c(12, 17, 20, self$max_human_infectivity),
+                           c(0, 1, 1, 0),
+                           dt,
+                           yleft = 0, yright = 0)$y
       replace_na(infectivity, 0)
     }
   )
