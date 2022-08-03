@@ -22,10 +22,22 @@ for (f in R.files) source(f)
 # Initialisation
 
 ```{r}
-mysim = Simulation$new(env_dimensions = c(10, 10),
-                       n_people = 100,
-                       max_human_infectivity = 30,
-                       bite_rate = 0.001)
+env_length = 100
+n_people = 500
+people = tibble(
+  ID = seq_len(n_people),
+  X = runif(n_people, min=0, max=env_length),
+  Y = runif(n_people, min=0, max=env_length),
+  infected = runif(n_people) < 0.1,
+  t_infection = ifelse(infected, 0, NA),
+  blood_gametocyte_prob = 0
+)
+mosquito_raster = make_perlin_mosquitoes(c(env_length, env_length))
+mysim = Simulation$new(people = people,
+                       mosquito_raster = mosquito_raster,
+                       max_human_infectivity = 60,
+                       bite_rate = 0.001,
+                       mosquito_death_rate = 0.25)
 mysim$plot_mosquito_infectivity()
 mysim$plot_human_infectivity()
 mysim$plot_mosquito_migration()
@@ -35,7 +47,12 @@ mysim$plot_init()
 Time step
 
 ```{r}
-for (i in 1:40) mysim$iterate(1)
+n_iter = 100
+pb = txtProgressBar(min = 0, max = n_iter, style = 3) 
+for (t in 1:100)  {
+  setTxtProgressBar(pb, t)
+  mysim$iterate(1)
+}
 mysim$plot_epicurve()
 mysim$plot()
 ```
