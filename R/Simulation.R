@@ -73,7 +73,7 @@ Simulation = R6Class(
     },
     
     
-    iterate = function(dt) {
+    iterate = function(dt, debug=FALSE) {
       self$t = self$t + dt
       
       # Calculate current state of human infectivity
@@ -103,74 +103,106 @@ Simulation = R6Class(
                  private$mosquito_sporogony(self$t - t_inoculation))
       
       # Expose and infect people
-      new_human_infections = self$people %>%
-        filter(!infected) %>%
-        merge(self$mosquito_infections, by=character()) %>%
-        as_tibble() %>%
-        mutate(distance = sqrt((X.x-X.y)^2 + (Y.x-Y.y)^2)) %>%
-        filter(distance < self$max_mosquito_flight_range) %>%
-        # Number of infectious bites per person per unit time
-        mutate(human_biting_rate = infectious_count *
-                 # Disperse load over total cloud area (TODO: check integral=1)
-                 private$mosquito_migration(distance, self$t-t_inoculation),
-               ento_inoculation_rate = human_biting_rate *
-                 self$sporozoite_infection_rate, # EIR = HBR * SIR
-               # shortcut for P(x) > 0, x ~Pois(EIR*dt)
-               infect = runif(nrow(.)) > exp(-ento_inoculation_rate * dt)
-        ) %>%
-        filter(infect) %>%
-        distinct(ID)
+      # new_human_infections = self$people %>%
+      #   filter(!infected) %>%
+      #   merge(self$mosquito_infections, by=character()) %>%
+      #   as_tibble() %>%
+      #   mutate(distance = sqrt((X.x-X.y)^2 + (Y.x-Y.y)^2)) %>%
+      #   filter(distance < self$max_mosquito_flight_range) %>%
+      #   # Number of infectious bites per person per unit time
+      #   mutate(human_biting_rate = infectious_count *
+      #            # Disperse load over total cloud area (TODO: check integral=1)
+      #            private$mosquito_migration(distance, self$t-t_inoculation),
+      #          ento_inoculation_rate = human_biting_rate *
+      #            self$sporozoite_infection_rate, # EIR = HBR * SIR
+      #          # shortcut for P(x) > 0, x ~Pois(EIR*dt)
+      #          infect = runif(nrow(.)) > exp(-ento_inoculation_rate * dt)
+      #   ) %>%
+      #   filter(infect) %>%
+      #   distinct(ID)
       
-      # print(paste("Infected", nrow(new_human_infections), "people"))
+      susceptible = mysim$people %>% filter(!infected)
+      susceptible_EIR = apply(
+        susceptible,
+        1,
+        function(person) {
+          bites = mysim$mosquito_infections %>%
+            mutate(distance = sqrt((X - person["X"])^2 + (Y - person["Y"])^2),
+                   human_biting_rate = infectious_count *
+                     # Disperse load over total cloud area (TODO: check integral=1)
+                     private$mosquito_migration(distance, self$t-t_inoculation),
+                   ento_inoculation_rate = human_biting_rate *
+                     self$sporozoite_infection_rate) # EIR = HBR * SIR
+          sum(bites$ento_inoculation_rate)
+        }
+      )
+      infect_IDs = susceptible$ID[runif(nrow(susceptible)) > exp(-susceptible_EIR * dt)]
       
       # Update population
-      self$people$infected[new_human_infections$ID] = TRUE
-      self$people$t_infection[new_human_infections$ID] = self$t
+      self$people$infected[infect_IDs] = TRUE
+      self$people$t_infection[infect_IDs] = self$t
     },
     
     plot = function() {
+      p1 = self$plot_state()
+      p2 = self$plot_epicurve()
+      p1 / p2 + plot_layout(heights = c(4, 1), guides = "collect")
+    },
+    
+    plot_state = function() {
       humans = self$people %>%
         mutate(Infection = case_when(t_infection == self$t ~ "New",
                                      t_infection < self$t ~ "Historical",
                                      TRUE ~ "None"))
       
-      mosquitoes = as.data.frame(private$vis_raster, xy=T) %>%
-        mutate(ID = row_number()) %>%
-        rename(X = x, Y = y) %>%
-        merge(self$mosquito_infections, by=character()) %>%
-        as_tibble() %>%
-        mutate(distance = sqrt((X.x-X.y)^2 + (Y.x-Y.y)^2)) %>%
-        rename(X=X.x, Y=Y.x) %>%
-        filter(distance < self$max_mosquito_flight_range) %>%
-        mutate(human_biting_rate = infectious_count *
-                 self$bite_rate *
-                 # Disperse load over total cloud area (TODO: check integral=1)
-                 private$mosquito_migration(distance, self$t-t_inoculation),
-               ento_inoculation_rate = human_biting_rate *
-                 self$sporozoite_infection_rate
-        ) %>%
-        group_by(X, Y) %>%
-        summarise(ento_inoculation_rate = sum(ento_inoculation_rate),
-                  .groups = "drop")
+      vis_grid = as.data.frame(private$vis_raster, xy=T) %>%
+        rename(X = x, Y = y)
+      vis_grid$ento_inoculation_rate = apply(
+        vis_grid,
+        1,
+        function(point) {
+          bites = mysim$mosquito_infections %>%
+            mutate(distance = sqrt((X - point["X"])^2 + (Y - point["Y"])^2),
+                   human_biting_rate = infectious_count *
+                     # Disperse load over total cloud area (TODO: check integral=1)
+                     private$mosquito_migration(distance, self$t-t_inoculation),
+                   ento_inoculation_rate = human_biting_rate *
+                     self$sporozoite_infection_rate) # EIR = HBR * SIR
+          sum(bites$ento_inoculation_rate)
+        }
+      )
       
-      ggplot(mosquitoes, aes(x=X, y=Y)) +
+      ggplot(vis_grid, aes(x=X, y=Y)) +
         geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
         scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
+        labs(fill = "EIR") +
         new_scale("fill") +
         geom_point(aes(fill=blood_gametocyte_prob, color=Infection), data=humans, pch=21, size=2, stroke=1.5) +
+        labs(fill = "Gametocyte\nprobability") +
         scale_fill_viridis_c(limits=c(0, 1)) +
         scale_color_manual(values=c("New"="tomato",
                                     "Historical"="steelblue",
                                     "None"=NA)) +
         coord_equal() +
-        labs(title = paste("t =", self$t)) +
-        theme(legend.key.height = unit(10, "pt"))
+        labs(title = paste("t =", self$t), x = NULL, y = NULL) +
+        theme_minimal() +
+        theme(legend.key.height = unit(10, "pt"),
+              axis.text = element_blank(),
+              axis.ticks = element_blank(),
+              panel.background = element_blank(),
+              panel.grid = element_blank())
     },
     
     plot_epicurve = function() {
       self$people %>%
+        filter(t_infection > 0) %>%
         ggplot(aes(x = t_infection)) +
-        geom_bar(width = 0.9)
+        geom_bar(width = 0.9) +
+        coord_cartesian(xlim = c(0, NA)) +
+        labs(x = "Infection time",
+             y = NULL) +
+        theme_minimal() +
+        theme(panel.grid.minor = element_blank())
     },
     
     #' Plot spread of mosquitoes over distance

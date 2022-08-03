@@ -12,6 +12,7 @@ library(lubridate)
 library(spatialEco)
 library(ambient)
 library(ggnewscale)
+library(patchwork)
 conflict_prefer("select", "dplyr")
 conflict_prefer("filter", "dplyr")
 
@@ -23,7 +24,7 @@ for (f in R.files) source(f)
 
 ```{r}
 env_length = 100
-n_people = 500
+n_people = 200
 people = tibble(
   ID = seq_len(n_people),
   X = runif(n_people, min=0, max=env_length),
@@ -49,11 +50,11 @@ Time step
 ```{r}
 n_iter = 100
 pb = txtProgressBar(min = 0, max = n_iter, style = 3) 
-for (t in 1:100)  {
+for (t in seq_len(n_iter))  {
   setTxtProgressBar(pb, t)
   mysim$iterate(1)
 }
-mysim$plot_epicurve()
+
 mysim$plot()
 ```
 
