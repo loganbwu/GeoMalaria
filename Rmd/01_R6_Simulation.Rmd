@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(conflicted)
+library(raster)
+library(tidyverse)
+library(sf)
+library(lubridate)
+library(spatialEco)
+library(ambient)
+library(ggnewscale)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+conflict_prefer("extract", "raster")
+
+R.files = list.files("../R", full.names = T)
+for (f in R.files) source(f)
+```
+
+# Initialisation
+
+```{r}
+mysim = Simulation$new(env_dimensions = c(10, 10),
+                       n_people = 100,
+                       max_mosquito_lifespan = 56,
+                       max_human_infectivity = 100,
+                       max_mosquito_flight_range = 8,
+                       infect_prob_unit = 0.01)
+mysim$plot_init()
+```
+
+Time step
+
+```{r}
+for (i in 1:30) mysim$iterate(1)
+mysim$plot()
+```
+
+
