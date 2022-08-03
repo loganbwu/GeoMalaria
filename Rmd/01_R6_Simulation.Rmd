@@ -25,17 +25,17 @@ for (f in R.files) source(f)
 ```{r}
 mysim = Simulation$new(env_dimensions = c(10, 10),
                        n_people = 100,
-                       max_mosquito_lifespan = 56,
+                       max_mosquito_lifespan = 20,
                        max_human_infectivity = 100,
                        max_mosquito_flight_range = 8,
-                       infect_prob_unit = 0.01)
+                       bite_rate = 0.001)
 mysim$plot_init()
 ```
 
 Time step
 
 ```{r}
-for (i in 1:30) mysim$iterate(1)
+for (i in 1:40) mysim$iterate(1)
 mysim$plot()
 ```
 

@@ -12,17 +12,9 @@ plot_mosquito_migration = function() {
     geom_vline(xintercept=c(-1,1)*max_mosquito_flight_range, linetype="dashed")
 }
 
-
-#' Lifecycle stages for P. vivax in humans after inoculation
-#'
-#' @param t days since inoculation
-#' 
-#' @return vector 1 if human is infectious, 0 if not
-# human_infectivity = function(dt, max_human_infectivity) {
-#   t_incubation = runif(length(dt), 12, 17)
-#   infectivity = as.numeric(dt > t_incubation & dt < max_human_infectivity)
-#   replace_na(infectivity, 0)
-# }
+plot_mosquito_lifespan = function() {
+  
+}
 
 my_extract = function(...) {
   values = raster::extract(...)
