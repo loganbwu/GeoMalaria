@@ -25,18 +25,27 @@ set.seed(1)
 
 ```{r}
 env_length = 100
-n_people = 200
-people = tibble(
-  ID = seq_len(n_people),
-  X = runif(n_people, min=0, max=env_length),
-  Y = runif(n_people, min=0, max=env_length),
-  infected = runif(n_people) < 0.1,
+n_locations = 100
+n_humans = 200
+locations = tibble(
+  X = runif(n_locations, min=0, max=env_length),
+  Y = runif(n_locations, min=0, max=env_length)
+)
+humans = tibble(
+  ID = seq_len(n_humans),
+  infected = runif(n_humans) < 0.1,
   t_infection = ifelse(infected, 0, NA),
-  blood_gametocyte_prob = 0
+  blood_gametocyte_prob = 0,
+  location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 3, T)), simplify=F),
+  location_proportions = lapply(location_ix, function(x) {
+    unnormed = sort(runif(length(x)), decreasing = TRUE)
+    unnormed / sum(unnormed)
+  })
 )
 mosquito_raster = make_perlin_mosquitoes(c(env_length, env_length))
 mosquito_raster[][mosquito_raster[] < 3000] = 0
-mysim = Simulation$new(people = people,
+mysim = Simulation$new(humans = humans,
+                       locations = locations,
                        mosquito_raster = mosquito_raster,
                        max_human_infectivity = 60,
                        bite_rate = 0.1,
@@ -50,7 +59,7 @@ mysim$plot_init()
 Time step
 
 ```{r}
-n_iter = 100
+n_iter = 40
 pb = txtProgressBar(min = 0, max = n_iter, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
 for (t in seq_len(n_iter))  {
