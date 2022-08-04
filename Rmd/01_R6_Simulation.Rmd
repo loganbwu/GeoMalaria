@@ -18,6 +18,7 @@ conflict_prefer("filter", "dplyr")
 
 R.files = list.files("../R", full.names = T)
 for (f in R.files) source(f)
+set.seed(1)
 ```
 
 # Initialisation
@@ -34,10 +35,11 @@ people = tibble(
   blood_gametocyte_prob = 0
 )
 mosquito_raster = make_perlin_mosquitoes(c(env_length, env_length))
+mosquito_raster[][mosquito_raster[] < 3000] = 0
 mysim = Simulation$new(people = people,
                        mosquito_raster = mosquito_raster,
                        max_human_infectivity = 60,
-                       bite_rate = 0.001,
+                       bite_rate = 0.1,
                        mosquito_death_rate = 0.25)
 mysim$plot_mosquito_infectivity()
 mysim$plot_human_infectivity()
@@ -49,11 +51,13 @@ Time step
 
 ```{r}
 n_iter = 100
-pb = txtProgressBar(min = 0, max = n_iter, style = 3) 
+pb = txtProgressBar(min = 0, max = n_iter, style = 3)
+tictoc::tic(paste("Processing", n_iter, "iterations"))
 for (t in seq_len(n_iter))  {
   setTxtProgressBar(pb, t)
   mysim$iterate(1)
 }
+tictoc::toc()
 
 mysim$plot()
 ```
