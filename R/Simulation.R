@@ -58,6 +58,8 @@ Simulation = R6Class(
       }
       # Capture 95% of the distance travelled at the max lifespan
       self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(private$mosquito_travel * self$max_mosquito_lifespan))
+      
+      invisible(self)
     },
     
     
@@ -72,7 +74,8 @@ Simulation = R6Class(
       for (i in seq_len(nrow(self$humans))) {
         ix = self$humans$location_ix[[i]]
         self$locations$gametocyte_load[ix] = self$locations$gametocyte_load[ix] +
-          self$humans$blood_gametocyte_prob[i] *
+          self$humans$blood_gametocyte_prob[i] * # adjust by human infectivity
+          self$humans$location_proportions[[i]] * # weight by human time spent
           self$bite_rate
         if (debug) print(ix)
       }
@@ -99,28 +102,30 @@ Simulation = R6Class(
                  private$mosquito_survival(self$t - t_inoculation) *
                  private$mosquito_sporogony(self$t - t_inoculation))
       
-      # Expose and infect humans
+      # Expose locations
       self$locations$EIR = apply(
         locations,
         1,
         function(loc) {
-          bites = mysim$mosquito_infections %>%
-            mutate(distance = sqrt((X - loc["X"])^2 + (Y - loc["Y"])^2),
-                   ento_inoculation_rate = infectious_count *
-                     self$bite_rate *
-                     # Disperse load over total cloud area (TODO: check integral=1)
-                     private$mosquito_migration(distance, self$t-t_inoculation) *
-                     self$sporozoite_infection_rate) # EIR = HBR * SIR
-          sum(bites$ento_inoculation_rate)
+          # Calculate total EIR=HBR*SIR from all mosquito infection events
+          with(
+            self$mosquito_infections,
+            sum(infectious_count *
+                  self$bite_rate *
+                  # Disperse load over total cloud area (TODO: check integral=1)
+                  private$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
+                  self$sporozoite_infection_rate)
+          )
         }
       )
-      
+      # Expose and infect humans
       susceptible = mysim$humans %>% filter(!infected)
       susceptible_EIR = apply(
         susceptible,
         1,
         function(human) {
           ix = human$location_ix
+          # get weighted average of EIR at the person's locations
           sum(self$locations$EIR[ix] * human$location_proportions)
         }
       )
@@ -135,12 +140,9 @@ Simulation = R6Class(
     },
     
     plot = function() {
-      # p_init = self$plot_init() + plot_layout(guides="keep")
       p_state = self$plot_state()
       p_epicurve = self$plot_epicurve()
-      p_final = p_state / p_epicurve + plot_layout(heights=c(4,1), guides="collect")
-      print(p_final)
-      invisible(self)
+      p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
     },
     
     
@@ -182,14 +184,14 @@ Simulation = R6Class(
       vis_grid$ento_inoculation_rate = apply(
         vis_grid,
         1,
-        function(point) {
-          bites = self$mosquito_infections %>%
-            mutate(ento_inoculation_rate = infectious_count *
-                     # Disperse load over total cloud area (TODO: check integral=1)
-                     private$mosquito_migration(sqrt((X - point["X"])^2 + (Y - point["Y"])^2), self$t-t_inoculation) *
-                     self$bite_rate *
-                     self$sporozoite_infection_rate) # EIR = HBR * SIR
-          sum(bites$ento_inoculation_rate)
+        function(loc) {
+          with(
+            self$mosquito_infections,
+            sum(infectious_count *
+                  private$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
+                  self$bite_rate *
+                  self$sporozoite_infection_rate)
+          )
         }
       )
       
@@ -233,7 +235,7 @@ Simulation = R6Class(
                length.out = 100)
       DT = seq(1, self$max_mosquito_lifespan, length.out=7)
       DXDT = expand.grid(dx=DX, dt=DT) %>%
-        mutate(density = private$mosquito_migration(dx, dt))
+        mutate(density = private$mosquito_migration(dx, 0, dt))
       with(DXDT, qplot(dx, density, color=dt, group=dt, geom="line") +
              geom_vline(xintercept=c(-1,1) * self$max_mosquito_flight_range) +
              scale_color_continuous(breaks = DT) +
@@ -281,8 +283,9 @@ Simulation = R6Class(
     
     # 1-D variance of mosquito travel in (km/day)^2
     mosquito_travel = 1^2,
-    mosquito_migration = function(dx, dt) {
-      dnorm(dx, sd=sqrt(private$mosquito_travel * dt))
+    mosquito_migration = function(dx, dy, dt) {
+      exp(dnorm(dx, sd=sqrt(private$mosquito_travel * dt), log=T) + 
+            dnorm(dy, sd=sqrt(private$mosquito_travel * dt), log=T))
     },
     
     #' Lifecycle stages for P. vivax in humans after inoculation
@@ -302,7 +305,7 @@ Simulation = R6Class(
   
   active = list(
     
-    #' Representation of persons with only one set of coordinates
+    #' Representation of humans with only one set of coordinates
     #' 
     #' Just places people at their highest proportion location
     humans_collapse = function() {
@@ -312,6 +315,7 @@ Simulation = R6Class(
                Y = self$locations$Y[location_ix])
     },
     
+    #' Represent humans at all of their coordinates
     humans_expand = function() {
       self$humans %>%
         unnest(cols=c(location_ix, location_proportions)) %>%

@@ -36,7 +36,7 @@ humans = tibble(
   infected = runif(n_humans) < 0.1,
   t_infection = ifelse(infected, 0, NA),
   blood_gametocyte_prob = 0,
-  location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 3, T)), simplify=F),
+  location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 2, T)), simplify=F),
   location_proportions = lapply(location_ix, function(x) {
     unnormed = sort(runif(length(x)), decreasing = TRUE)
     unnormed / sum(unnormed)
@@ -59,7 +59,7 @@ mysim$plot_init()
 Time step
 
 ```{r}
-n_iter = 40
+n_iter = 90
 pb = txtProgressBar(min = 0, max = n_iter, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
 for (t in seq_len(n_iter))  {
