@@ -17,9 +17,9 @@ Simulation = R6Class(
     # States
     humans = NULL,
     locations = NULL,
-    mosquito_infections = tibble(X = NA_real_,
-                                 Y = NA_real_,
-                                 t_inoculation = NA_real_),
+    mosquito_infections = tibble(X = numeric(),
+                                 Y = numeric(),
+                                 t_inoculation = numeric()),
     humans_infections = tibble(),
     
     #' Initialize a simulation instance
