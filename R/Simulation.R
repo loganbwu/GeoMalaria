@@ -23,7 +23,11 @@ Simulation = R6Class(
     humans_infections = tibble(),
     
     # Outbreak history
-    case_count = numeric(),
+    history_infections = tibble(
+      ID = integer(),
+      t = numeric(),
+      is_relapse = logical()
+    ),
     
     #' Initialize a simulation instance
     #' 
@@ -72,18 +76,18 @@ Simulation = R6Class(
       
       # Calculate current state of human infectivity and immunity
       self$humans = self$humans %>%
-        mutate(blood_gametocyte_prob = private$human_infectivity(self$t - t_infection),
+        mutate(p_blood_gametocyte = private$human_infectivity(self$t - t_infection),
                immunity = private$human_immunity(self$t - t_infection))
       
       # Calculate total human gametocyte load per location
       self$locations$gametocyte_load = 0
       infected = self$humans %>%
-        filter(blood_gametocyte_prob > 0)
+        filter(p_blood_gametocyte > 0)
       for (i in seq_len(nrow(infected))) {
         with(infected, {
           ix = location_ix[[i]]
           self$locations$gametocyte_load[ix] = self$locations$gametocyte_load[ix] +
-            blood_gametocyte_prob[i] * # adjust by human infectivity
+            p_blood_gametocyte[i] * # adjust by human infectivity
             location_proportions[[i]] # weight by human time spent
         })
       }
@@ -113,8 +117,10 @@ Simulation = R6Class(
         }
       ) * (1 - susceptible$immunity)
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
-      infect_IDs = susceptible$ID[runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
-                                    susceptible$t_relapse <= mysim$t]
+      infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
+        susceptible$t_relapse <= mysim$t
+      infect_IDs = susceptible$ID[infect_ix]
+      is_relapse = (susceptible$t_relapse <= mysim$t)[infect_ix]
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
@@ -138,7 +144,12 @@ Simulation = R6Class(
       self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
       
       # Take observations
-      self$case_count = c(self$case_count, rep(self$t, length(infect_IDs)))
+      self$history_infections = bind_rows(
+        self$history_infections,
+        tibble(ID = infect_IDs,
+               t = self$t,
+               is_relapse = is_relapse)
+      )
       
       invisible(self)
     },
@@ -180,7 +191,7 @@ Simulation = R6Class(
     plot_state = function() {
       humans = self$humans_collapse %>%
         mutate(Infection = case_when(t_infection == self$t ~ "New",
-                                     t_infection < self$t ~ "Historical",
+                                     ID %in% self$history_infections$ID ~ "Historical",
                                      TRUE ~ "None"))
       
       vis_grid = as.data.frame(private$vis_raster, xy=T) %>%
@@ -194,7 +205,7 @@ Simulation = R6Class(
         scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
         labs(fill = "EIR") +
         new_scale("fill") +
-        geom_point(aes(fill=blood_gametocyte_prob, color=Infection), data=humans, pch=21, size=2, stroke=1) +
+        geom_point(aes(fill=p_blood_gametocyte, color=Infection), data=humans, pch=21, size=2, stroke=1) +
         labs(fill = "Gametocyte\nprobability") +
         scale_fill_viridis_c(limits=c(0, 1)) +
         scale_color_manual(values=c("New"="tomato",
@@ -211,12 +222,15 @@ Simulation = R6Class(
     },
     
     plot_epicurve = function() {
-      tibble(case_count = self$case_count) %>%
-        ggplot(aes(x = case_count)) +
+      self$history_infections %>%
+        mutate(is_relapse = ifelse(is_relapse, "Relapse", "Primary")) %>%
+        ggplot(aes(x = t, fill = is_relapse)) +
         geom_bar(width = 0.9) +
         coord_cartesian(xlim = c(0, self$t)) +
         labs(x = "Infection time",
+             fill = NULL,
              y = NULL) +
+        scale_fill_brewer(palette = "Set2", na.value = "grey") +
         theme_minimal() +
         theme(panel.grid.minor = element_blank())
     },

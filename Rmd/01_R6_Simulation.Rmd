@@ -1,5 +1,5 @@
 ---
-title: "R Notebook"
+title: "01 R6 Simulation"
 output: html_notebook
 ---
 
@@ -24,18 +24,21 @@ set.seed(1)
 # Initialisation
 
 ```{r}
-env_length = 100
+len_environment = 100
 n_locations = 500
 n_humans = 500
 locations = tibble(
-  X = runif(n_locations, min=0, max=env_length),
-  Y = runif(n_locations, min=0, max=env_length)
+  X = runif(n_locations, min=0, max=len_environment),
+  Y = runif(n_locations, min=0, max=len_environment)
 )
 humans = tibble(
   ID = seq_len(n_humans),
+  # Start time of their current infection
   t_infection = ifelse(as.integer(runif(n_humans) < 0.1), 0, NA),
-  t_relapse = Inf, # each person can have one scheduled relapse time
-  blood_gametocyte_prob = 0,
+  # <Inf if person has one scheduled relapse
+  t_relapse = Inf,
+  # Probability of having enough gametocytes to infect a biting mosquito
+  p_blood_gametocyte = 0,
   location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 2, T)), simplify=F),
   location_proportions = lapply(location_ix, function(x) {
     unnormed = sort(runif(length(x)), decreasing = TRUE)
@@ -43,7 +46,7 @@ humans = tibble(
   })
 )
 
-mosquito_raster = make_perlin_mosquitoes(c(env_length, env_length))
+mosquito_raster = make_perlin_mosquitoes(c(len_environment, len_environment))
 mosquito_raster[][mosquito_raster[] < 3000] = 0
 
 mysim = Simulation$new(humans = humans,
@@ -63,8 +66,8 @@ mysim$plot_init()
 Time step
 
 ```{r}
-n_iter = 100
-pb = txtProgressBar(min = 0, max = n_iter * 2, style = 3)
+n_iter = 50
+pb = txtProgressBar(min = 0, max = n_iter * 3, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
 # Run outbreak
 for (t in seq_len(n_iter))  {
@@ -79,7 +82,7 @@ mysim$mosquito_infections = mysim$mosquito_infections %>%
   slice(0)
 
 # Run for more iterations
-for (t in seq_len(n_iter))  {
+for (t in seq_len(n_iter*2))  {
   setTxtProgressBar(pb, t + n_iter)
   mysim$iterate(1)
 }

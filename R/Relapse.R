@@ -2,9 +2,9 @@ library(R6)
 
 #' Relapse scheduler for P. vivax
 #' 
-#' Contains a list of times to initiate a relapse, and functions for a particular strain.
-Relapse = R6Class(
-  "Relapse",
+#' Contains a list of times to initiate an intervention.
+Intervention = R6Class(
+  "Intervention",
   public = list(
     
     schedule = tibble(ID = integer(), t = numeric()),

@@ -1,0 +1,35 @@
+---
+title: "02 Construct Population"
+output: html_notebook
+---
+
+Construct a synthetic population and write to a data file.
+
+```{r}
+library(conflicted)
+library(raster)
+library(tidyverse)
+library(sf)
+library(lubridate)
+library(spatialEco)
+library(ambient)
+library(ggnewscale)
+library(patchwork)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+R.files = list.files("../R", full.names = T)
+for (f in R.files) source(f)
+set.seed(1)
+```
+
+Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10# of people spend half their time with another village.
+
+```{r}
+# Construct living locations
+houses_1 = tibble(X = rnorm(30, 0, 40),
+                  Y = rnorm(30, 0, 40))
+houses_2 = tibble(X = rnorm(15, 100, 25),
+                  Y = rnorm(15, 0, 25))
+
+```
