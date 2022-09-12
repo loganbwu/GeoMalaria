@@ -35,7 +35,7 @@ humans = tibble(
   ID = seq_len(n_humans),
   infections = as.integer(runif(n_humans) < 0.1),
   t_infection = ifelse(infections > 0, 0, NA),
-  immunity = ifelse(infections > 0, 1, 0),
+  # immunity = ifelse(infections > 0, 1, 0),
   blood_gametocyte_prob = 0,
   location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 2, T)), simplify=F),
   location_proportions = lapply(location_ix, function(x) {
@@ -48,7 +48,7 @@ mosquito_raster[][mosquito_raster[] < 3000] = 0
 mysim = Simulation$new(humans = humans,
                        locations = locations,
                        mosquito_raster = mosquito_raster,
-                       max_human_infectivity = 60,
+                       duration_human_infectivity = 60,
                        bite_rate = 0.1,
                        mosquito_death_rate = 0.25)
 mysim$plot_mosquito_infectivity()
@@ -60,7 +60,7 @@ mysim$plot_init()
 Time step
 
 ```{r}
-n_iter = 200
+n_iter = 100
 pb = txtProgressBar(min = 0, max = n_iter, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
 for (t in seq_len(n_iter))  {
