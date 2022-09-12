@@ -33,8 +33,7 @@ locations = tibble(
 )
 humans = tibble(
   ID = seq_len(n_humans),
-  infections = as.integer(runif(n_humans) < 0.1),
-  t_infection = ifelse(infections > 0, 0, NA),
+  t_infection = ifelse(as.integer(runif(n_humans) < 0.1), 0, NA),
   # immunity = ifelse(infections > 0, 1, 0),
   blood_gametocyte_prob = 0,
   location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 2, T)), simplify=F),
