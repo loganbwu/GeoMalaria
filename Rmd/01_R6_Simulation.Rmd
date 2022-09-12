@@ -34,7 +34,7 @@ locations = tibble(
 humans = tibble(
   ID = seq_len(n_humans),
   t_infection = ifelse(as.integer(runif(n_humans) < 0.1), 0, NA),
-  # immunity = ifelse(infections > 0, 1, 0),
+  t_relapse = Inf, # each person can have one scheduled relapse time
   blood_gametocyte_prob = 0,
   location_ix = replicate(n_humans, unique(sample(seq_len(n_locations), 2, T)), simplify=F),
   location_proportions = lapply(location_ix, function(x) {
@@ -42,17 +42,21 @@ humans = tibble(
     unnormed / sum(unnormed)
   })
 )
+
 mosquito_raster = make_perlin_mosquitoes(c(env_length, env_length))
 mosquito_raster[][mosquito_raster[] < 3000] = 0
+
 mysim = Simulation$new(humans = humans,
                        locations = locations,
                        mosquito_raster = mosquito_raster,
                        duration_human_infectivity = 60,
                        bite_rate = 0.1,
                        mosquito_death_rate = 0.25)
+
 mysim$plot_mosquito_infectivity()
 mysim$plot_human_infectivity()
 mysim$plot_mosquito_migration()
+mysim$plot_human_relapse()
 mysim$plot_init()
 ```
 
@@ -60,12 +64,26 @@ Time step
 
 ```{r}
 n_iter = 100
-pb = txtProgressBar(min = 0, max = n_iter, style = 3)
+pb = txtProgressBar(min = 0, max = n_iter * 2, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
+# Run outbreak
 for (t in seq_len(n_iter))  {
   setTxtProgressBar(pb, t)
   mysim$iterate(1)
 }
+
+# Interrupt and clear all current humand and mosquito infections
+mysim$humans = mysim$humans %>%
+  mutate(t_infection = NA)
+mysim$mosquito_infections = mysim$mosquito_infections %>%
+  slice(0)
+
+# Run for more iterations
+for (t in seq_len(n_iter))  {
+  setTxtProgressBar(pb, t + n_iter)
+  mysim$iterate(1)
+}
+
 tictoc::toc()
 
 mysim$plot()

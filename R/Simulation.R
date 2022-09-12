@@ -22,6 +22,9 @@ Simulation = R6Class(
                                  t_inoculation = numeric()),
     humans_infections = tibble(),
     
+    # Outbreak history
+    case_count = numeric(),
+    
     #' Initialize a simulation instance
     #' 
     #' @param humans dataframe of residents in the area
@@ -109,11 +112,13 @@ Simulation = R6Class(
           sum(self$locations$EIR[ix] * human$location_proportions)
         }
       ) * (1 - susceptible$immunity)
-      # shortcut for P(x > 0), x ~Pois(EIR*dt)
-      infect_IDs = susceptible$ID[runif(nrow(susceptible)) > exp(-susceptible_EIR * dt)]
+      # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
+      infect_IDs = susceptible$ID[runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
+                                    susceptible$t_relapse <= mysim$t]
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
+      self$humans$t_relapse[infect_IDs] = self$t + private$human_schedule_relapse(length(infect_IDs))
       
       # Update mosquito population
       # Expose mosquitoes at human locations
@@ -131,6 +136,9 @@ Simulation = R6Class(
         select(X, Y, t_inoculation, infected_count, infectious_count)
       # Add potential mosquitoes to list
       self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
+      
+      # Take observations
+      self$case_count = c(self$case_count, rep(self$t, length(infect_IDs)))
       
       invisible(self)
     },
@@ -203,9 +211,8 @@ Simulation = R6Class(
     },
     
     plot_epicurve = function() {
-      self$humans %>%
-        filter(t_infection > 0) %>%
-        ggplot(aes(x = t_infection)) +
+      tibble(case_count = self$case_count) %>%
+        ggplot(aes(x = case_count)) +
         geom_bar(width = 0.9) +
         coord_cartesian(xlim = c(0, self$t)) +
         labs(x = "Infection time",
@@ -249,6 +256,14 @@ Simulation = R6Class(
         geom_line() +
         labs(title = "Inoculation load and immunity after infection",
              x = "Days since human infection", y = "Probability", color = "Attribute")
+    },
+    
+    plot_human_relapse = function() {
+      tibble(dt = private$human_schedule_relapse(10000)) %>%
+        ggplot(aes(x = dt)) +
+        geom_density(fill = "steelblue") +
+        labs(title = "Relapse density",
+             x = "Days since infection", y = "Probability")
     },
     
     #' Recompute location mosquito densities from a raster
@@ -321,6 +336,20 @@ Simulation = R6Class(
                         dt,
                         yleft = 0, yright = 0.5)$y
       replace_na(immunity, 0)
+    },
+    
+    #' Human relapse distribution
+    #' 
+    #' Schedule a relapse infection for number of days after the primary infection.
+    #' NA value is no relapse.
+    #' shape = (mean / sd)^2
+    #' rate =  mean / sd^2
+    human_relapse_shape = 1,
+    human_relapse_rate = 1/30,
+    human_schedule_relapse = function(n) {
+      ifelse(runif(n) < 0.1,
+             14 + rgamma(n, private$human_relapse_shape, private$human_relapse_rate),
+             Inf)
     }
   ),
   
