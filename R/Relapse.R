@@ -1,6 +1,8 @@
 library(R6)
 
 #' Relapse scheduler for P. vivax
+#' 
+#' Contains a list of times to initiate a relapse, and functions for a particular strain.
 Relapse = R6Class(
   "Relapse",
   public = list(
@@ -18,7 +20,7 @@ Relapse = R6Class(
     schedule_stochastic_relapse = function(ID) {
       self$schedule_relapse(ID, runif(length(ID), 60, 80))
       invisible(self$schedule)
-    }
+    },
     
     schedule_relapse = function(ID, t) {
       self$schedule = bind_rows(self$schedule, tibble(ID, t))

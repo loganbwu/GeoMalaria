@@ -137,9 +137,10 @@ Simulation = R6Class(
       ) * (1 - susceptible$immunity)
       # shortcut for P(x) > 0, x ~Pois(EIR*dt)
       infect_IDs = susceptible$ID[runif(nrow(susceptible)) > exp(-susceptible_EIR * dt)]
+      print(infect_IDs)
       
       # Update population
-      self$humans$infected[infect_IDs] = TRUE
+      self$humans$infections[infect_IDs] = self$humans$infections[infect_IDs] + 1
       self$humans$t_infection[infect_IDs] = self$t
       
       invisible(self)
@@ -167,7 +168,8 @@ Simulation = R6Class(
         scale_fill_viridis_c(option = "magma") +
         scale_color_manual(values = c("Importation"="tomato",
                                       "Susceptible"="grey")) +
-        labs(fill = "Mos/km^2", size = "Proportion\ntime spent",
+        labs(title = "Initial state",
+             fill = "Mos/km^2", size = "Proportion\ntime spent",
              x = NULL, y = NULL) +
         theme_minimal() +
         theme(legend.key.height = unit(10, "pt"),
@@ -317,11 +319,16 @@ Simulation = R6Class(
       replace_na(infectivity, 0)
     },
     
+    #' Human immunity profile over time
+    #' 
+    #' Full immunity then decays to 50% 
+    #' scales # bites not # susceptible people. E.g. no one retains complete immunity
+    #' after decay, everyone retains partial protection
     human_immunity = function(dt) {
       immunity = approx(c(0, self$max_human_infectivity, 2*self$max_human_infectivity),
-                        c(1, 1, 0),
+                        c(1, 1, 0.5),
                         dt,
-                        yleft = 0, yright = 0)$y
+                        yleft = 0, yright = 0.5)$y
       replace_na(immunity, 0)
     }
   ),
