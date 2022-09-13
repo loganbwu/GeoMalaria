@@ -1,0 +1,67 @@
+---
+title: "03 Test Infection"
+output: html_notebook
+---
+
+Verify that two people living in close proximity with lots of mosquitoes can be infected by each other.
+
+```{r}
+library(conflicted)
+library(raster)
+library(tidyverse)
+library(sf)
+library(lubridate)
+library(spatialEco)
+library(ambient)
+library(ggnewscale)
+library(patchwork)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+R.files = list.files("../R", full.names = T)
+for (f in R.files) source(f)
+```
+
+```{r}
+set.seed(0)
+houses = tibble(X = 0.5, Y = 0.5)
+people = tibble(
+  ID = 1,
+  location_ix = list(1),
+  location_proportions = list(1),
+  t_infection = c(0),
+  t_relapse = 5
+)
+
+# Construct mosquito environment
+mosquito_raster = raster(
+  vals = 0,
+  ncols = 1,
+  nrows = 1,
+  xmn = 0,
+  xmx = 1,
+  ymn = 0,
+  ymx = 1)
+
+sim = Simulation$new(humans = people,
+                     locations = houses,
+                     mosquito_raster = mosquito_raster,
+                     duration_human_infectivity = 60,
+                     bite_rate = 99999,
+                     mosquito_death_rate = 0.25,
+                     p_relapse = 1)
+
+sim$plot_init()
+```
+
+```{r}
+for (i in 1:100) sim$iterate(1)
+```
+
+# Verification tests
+
+```{r}
+# At least one new person has relapsed
+testthat::expect_equal("Relapse" %in% sim$history_infections$source, TRUE)
+sim$plot()
+```

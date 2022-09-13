@@ -13,6 +13,7 @@ Simulation = R6Class(
     bite_rate = NULL,
     mosquito_death_rate = NULL,
     sporozoite_infection_rate = 0.75,
+    p_relapse = NULL,
     
     # States
     humans = NULL,
@@ -42,7 +43,8 @@ Simulation = R6Class(
                           mosquito_raster,
                           duration_human_infectivity, # days
                           mosquito_death_rate, # per day
-                          bite_rate) {
+                          bite_rate,
+                          p_relapse = 0) { # proportion of infections that relapse including relapses themselves
       
       # Raster for fine visualisation of continuous fields
       bounds = extent(mosquito_raster)
@@ -62,6 +64,7 @@ Simulation = R6Class(
       self$duration_human_infectivity = duration_human_infectivity
       self$bite_rate = bite_rate
       self$mosquito_death_rate = mosquito_death_rate
+      self$p_relapse = p_relapse
       
       # Calculate reasonable mosquito bounds
       # capture the vast majority of the mosquito lifespan
@@ -116,21 +119,29 @@ Simulation = R6Class(
       
       # Expose and infect humans
       susceptible = self$humans %>%
-        filter(immunity < 1)
-      susceptible_EIR = apply(
-        susceptible,
-        1,
-        function(human) {
-          ix = human$location_ix
-          # get weighted average of EIR at the person's locations
-          sum(self$locations$EIR[ix] * human$location_proportions)
-        }
-      ) * (1 - susceptible$immunity)
+        # People who are not immune or are due to relapse
+        filter(immunity < 1 | t_relapse <= self$t)
+      if (nrow(susceptible) > 0) {
+        susceptible_EIR = apply(
+          susceptible,
+          1,
+          function(human) {
+            ix = human$location_ix
+            # get weighted average of EIR at the person's locations
+            sum(self$locations$EIR[ix] * human$location_proportions)
+          }
+        ) * (1 - susceptible$immunity)
+      } else {
+        susceptible_EIR = numeric()
+      }
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
       infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
         susceptible$t_relapse <= self$t
       is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
       infect_IDs = susceptible$ID[infect_ix]
+      if (length(infect_IDs) > 0) {print(infect_IDs)
+        print(sim$t)
+      }
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
@@ -180,7 +191,7 @@ Simulation = R6Class(
                                  TRUE ~ "Susceptible")) %>%
         arrange(t_infection)
       ggplot(mapping = aes(x=X, y=Y)) +
-        geom_raster(data = mosquito_data, aes(fill=count)) +
+        geom_raster(data = mosquito_data, aes(fill=layer)) +
         geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
         coord_equal() +
         scale_size_area(max_size = 3) +
@@ -196,9 +207,9 @@ Simulation = R6Class(
         theme_minimal() +
         theme(legend.key.height = unit(10, "pt"),
               axis.text = element_blank(),
-        axis.ticks = element_blank(),
-        panel.background = element_blank(),
-        panel.grid = element_blank())
+              axis.ticks = element_blank(),
+              panel.background = element_blank(),
+              panel.grid = element_blank())
     },
     
     
@@ -210,8 +221,6 @@ Simulation = R6Class(
       
       vis_grid = as.data.frame(private$vis_raster, xy=T) %>%
         select(X = x, Y = y)
-      print(self$mosquito_infections %>%
-              filter(is.na(infectious_count)))
       vis_grid$ento_inoculation_rate = apply(vis_grid, 1, private$calculate_EIR)
       
       ggplot(vis_grid, aes(x=X, y=Y)) +
@@ -245,7 +254,7 @@ Simulation = R6Class(
         mutate(source = fct_inorder(source)) %>%
         ggplot(aes(x = t_infection, fill = source)) +
         geom_bar(width = 0.9) +
-        coord_cartesian(xlim = c(0, self$t), ylim = c(0, ymax)) +
+        coord_cartesian(xlim = c(0, self$t), ylim = c(0, max(1, ymax))) +
         labs(x = "Infection time",
              fill = NULL,
              y = NULL) +
@@ -365,7 +374,7 @@ Simulation = R6Class(
     #' after decay, everyone retains partial protection
     human_immunity = function(dt) {
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
-                        c(1, 1, 1),
+                        c(1, 1, 0.99),
                         dt,
                         yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
@@ -380,7 +389,7 @@ Simulation = R6Class(
     human_relapse_shape = 1,
     human_relapse_rate = 1/30,
     human_schedule_relapse = function(n) {
-      ifelse(runif(n) < 0.5,
+      ifelse(runif(n) < self$p_relapse,
              14 + rgamma(n, private$human_relapse_shape, private$human_relapse_rate),
              Inf)
     }
