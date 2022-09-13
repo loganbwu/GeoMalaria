@@ -18,6 +18,7 @@ Simulation = R6Class(
     # States
     humans = NULL,
     locations = NULL,
+    vis_raster = NULL,
     mosquito_infections = tibble(X = numeric(),
                                  Y = numeric(),
                                  t_inoculation = numeric()),
@@ -48,7 +49,7 @@ Simulation = R6Class(
       
       # Raster for fine visualisation of continuous fields
       bounds = extent(mosquito_raster)
-      private$vis_raster = raster(vals=0, nrows=100, ncols=100,
+      self$vis_raster = raster(vals=0, nrows=100, ncols=100,
                                   xmn=bounds@xmin, xmx=bounds@xmax,
                                   ymn=bounds@ymin, ymx=bounds@ymax, 
                                   crs="NULL +units=km")
@@ -68,11 +69,11 @@ Simulation = R6Class(
       
       # Calculate reasonable mosquito bounds
       # capture the vast majority of the mosquito lifespan
-      while (private$mosquito_survival(self$max_mosquito_lifespan) > 0.01) {
+      while (self$mosquito_survival(self$max_mosquito_lifespan) > 0.01) {
         self$max_mosquito_lifespan = self$max_mosquito_lifespan + 1
       }
       # Capture 95% of the distance travelled at the max lifespan
-      self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(private$mosquito_travel * self$max_mosquito_lifespan))
+      self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(self$mosquito_travel * self$max_mosquito_lifespan))
       
       # Initialise history
       self$history_infections = self$humans %>%
@@ -89,8 +90,8 @@ Simulation = R6Class(
       
       # Calculate current state of human infectivity and immunity
       self$humans = self$humans %>%
-        mutate(p_blood_gametocyte = private$human_infectivity(self$t - t_infection),
-               immunity = private$human_immunity(self$t - t_infection))
+        mutate(p_blood_gametocyte = self$human_infectivity(self$t - t_infection),
+               immunity = self$human_immunity(self$t - t_infection))
       
       # Calculate total human gametocyte load per location
       self$locations$gametocyte_load = 0
@@ -111,11 +112,11 @@ Simulation = R6Class(
         filter(self$t - t_inoculation <= self$max_mosquito_lifespan) %>%
         # Calculate current infectivity of infected mosquito clouds integrated over space   # Number of live mosquitoes with mature sporozoites from this event
         mutate(infectious_count = infected_count *
-                 private$mosquito_survival(self$t - t_inoculation) *
-                 private$mosquito_sporogony(self$t - t_inoculation))
+                 self$mosquito_survival(self$t - t_inoculation) *
+                 self$mosquito_sporogony(self$t - t_inoculation))
       
       # Expose locations
-      self$locations$EIR = apply(self$locations, 1, private$calculate_EIR)
+      self$locations$EIR = apply(self$locations, 1, self$calculate_EIR)
       
       # Expose and infect humans
       susceptible = self$humans %>%
@@ -139,14 +140,11 @@ Simulation = R6Class(
         susceptible$t_relapse <= self$t
       is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
       infect_IDs = susceptible$ID[infect_ix]
-      if (length(infect_IDs) > 0) {print(infect_IDs)
-        print(sim$t)
-      }
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
       # clear and reschedule relapses
-      self$humans$t_relapse[infect_IDs] = self$t + private$human_schedule_relapse(length(infect_IDs))
+      self$humans$t_relapse[infect_IDs] = self$t + self$human_schedule_relapse(length(infect_IDs))
       
       # Update mosquito population
       # Expose mosquitoes at human locations
@@ -176,138 +174,6 @@ Simulation = R6Class(
       invisible(self)
     },
     
-    plot = function() {
-      p_state = self$plot_state()
-      p_epicurve = self$plot_epicurve()
-      p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
-    },
-    
-    
-    plot_init = function() {
-      mosquito_data = as.data.frame(self$mosquito_raster, xy=T) %>%
-        rename(X = x, Y = y)
-      human_data = self$humans_expand %>%
-        mutate(State = case_when(t_infection == 0 ~ "Importation",
-                                 TRUE ~ "Susceptible")) %>%
-        arrange(t_infection)
-      ggplot(mapping = aes(x=X, y=Y)) +
-        geom_raster(data = mosquito_data, aes(fill=layer)) +
-        geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
-        coord_equal() +
-        scale_size_area(max_size = 3) +
-        scale_fill_viridis_c(option = "magma") +
-        scale_color_manual(values = c("Importation"="tomato",
-                                      "Susceptible"="grey")) +
-        labs(title = "Initial state",
-             color = NULL,
-             fill = "Mos/km^2",
-             size = "Proportion\ntime spent",
-             x = NULL,
-             y = NULL) +
-        theme_minimal() +
-        theme(legend.key.height = unit(10, "pt"),
-              axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              panel.background = element_blank(),
-              panel.grid = element_blank())
-    },
-    
-    
-    plot_state = function() {
-      humans = self$humans_collapse %>%
-        mutate(Infection = case_when(t_infection == self$t ~ "New",
-                                     ID %in% self$history_infections$ID ~ "Historical",
-                                     TRUE ~ "None"))
-      
-      vis_grid = as.data.frame(private$vis_raster, xy=T) %>%
-        select(X = x, Y = y)
-      vis_grid$ento_inoculation_rate = apply(vis_grid, 1, private$calculate_EIR)
-      
-      ggplot(vis_grid, aes(x=X, y=Y)) +
-        geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
-        scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
-        labs(fill = "EIR") +
-        new_scale("fill") +
-        geom_point(aes(fill=p_blood_gametocyte, color=Infection), data=humans, pch=21, size=2, stroke=1) +
-        labs(fill = "Gametocyte\nprobability") +
-        scale_fill_viridis_c(limits=c(0, 1)) +
-        scale_color_manual(values=c("New"="tomato",
-                                    "Historical"="grey",
-                                    "None"="steelblue")) +
-        coord_equal() +
-        labs(x = NULL, y = NULL) +
-        theme_minimal() +
-        theme(legend.key.height = unit(10, "pt"),
-              axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              panel.background = element_blank(),
-              panel.grid = element_blank())
-    },
-    
-    plot_epicurve = function() {
-      ymax = self$history_infections %>%
-        filter(source != "Seed") %>%
-        count(t_infection) %>%
-        pull(n) %>%
-        max()
-      self$history_infections %>%
-        mutate(source = fct_inorder(source)) %>%
-        ggplot(aes(x = t_infection, fill = source)) +
-        geom_bar(width = 0.9) +
-        coord_cartesian(xlim = c(0, self$t), ylim = c(0, max(1, ymax))) +
-        labs(x = "Infection time",
-             fill = NULL,
-             y = NULL) +
-        scale_fill_brewer(palette = "Set2", na.value = "grey") +
-        theme_minimal() +
-        theme(panel.grid.minor = element_blank())
-    },
-    
-    #' Plot spread of mosquitoes over distance
-    plot_mosquito_migration = function() {
-      DX = seq(-self$max_mosquito_flight_range,
-               self$max_mosquito_flight_range,
-               length.out = 100)
-      DT = seq(1, self$max_mosquito_lifespan, length.out=7)
-      expand.grid(dx=DX, dt=DT) %>%
-        mutate(density = private$mosquito_migration(dx, 0, dt)) %>%
-        ggplot(aes(x=dx, y=density, color=dt, group=dt)) +
-        geom_line() +
-        scale_color_continuous(breaks = DT) +
-        labs(x = "Distance (1D)", color = "Days since\nblood meal")
-    },
-    
-    
-    plot_mosquito_infectivity = function() {
-      tibble(dt = seq(0, self$max_mosquito_lifespan, length.out=1000),
-             survival = private$mosquito_survival(dt),
-             sporozoites = private$mosquito_sporogony(dt),
-             infectivity = survival*sporozoites) %>%
-        pivot_longer(cols = -dt) %>%
-        ggplot(aes(x = dt, y = value, color = name, linetype = name)) +
-        geom_line() +
-        labs(x = "Days since blood meal", y = "Probability", color = "Attribute")
-    },
-    
-    plot_human_infectivity = function() {
-      tibble(dt = seq(0, 2*self$duration_human_infectivity, length.out=1000),
-             gametocyte_load = private$human_infectivity(dt),
-             immunity = private$human_immunity(dt)) %>%
-        pivot_longer(cols = -dt) %>%
-        ggplot(aes(x = dt, y = value, color = name)) +
-        geom_line() +
-        labs(title = "Inoculation load and immunity after infection",
-             x = "Days since human infection", y = "Probability", color = "Attribute")
-    },
-    
-    plot_human_relapse = function() {
-      tibble(dt = private$human_schedule_relapse(10000)) %>%
-        ggplot(aes(x = dt)) +
-        geom_density(fill = "steelblue") +
-        labs(title = "Relapse density",
-             x = "Days since infection", y = "Probability")
-    },
-    
     #' Recompute location mosquito densities from a raster
     #' 
     #' @return mosquito_raster for further assignment
@@ -315,14 +181,7 @@ Simulation = R6Class(
       self$locations$mosquito_density = my_extract(mosquito_raster, self$locations[c("X", "Y")])
       self$mosquito_raster = mosquito_raster
       invisible(mosquito_raster)
-    }
-  ),
-  
-  
-  
-  private = list(
-    env_raster = NULL,
-    vis_raster = NULL,
+    },
     
     #' Calculate EIR at a location with X and Y elements
     calculate_EIR = function(loc) {
@@ -332,7 +191,7 @@ Simulation = R6Class(
         sum(infectious_count *
               self$bite_rate *
               # Disperse load over total cloud area (TODO: check integral=1)
-              private$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
+              self$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
               self$sporozoite_infection_rate)
       )
     },
@@ -350,8 +209,8 @@ Simulation = R6Class(
     # 1-D variance of mosquito travel in (km/day)^2
     mosquito_travel = 1^2,
     mosquito_migration = function(dx, dy, dt) {
-      exp(dnorm(dx, sd=sqrt(private$mosquito_travel * dt), log=T) + 
-            dnorm(dy, sd=sqrt(private$mosquito_travel * dt), log=T))
+      exp(dnorm(dx, sd=sqrt(self$mosquito_travel * dt), log=T) + 
+            dnorm(dy, sd=sqrt(self$mosquito_travel * dt), log=T))
     },
     
     #' Lifecycle stages for P. vivax in humans after inoculation
@@ -374,7 +233,7 @@ Simulation = R6Class(
     #' after decay, everyone retains partial protection
     human_immunity = function(dt) {
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
-                        c(1, 1, 0.99),
+                        c(1, 1, 1),
                         dt,
                         yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
@@ -390,7 +249,7 @@ Simulation = R6Class(
     human_relapse_rate = 1/30,
     human_schedule_relapse = function(n) {
       ifelse(runif(n) < self$p_relapse,
-             14 + rgamma(n, private$human_relapse_shape, private$human_relapse_rate),
+             14 + rgamma(n, self$human_relapse_shape, self$human_relapse_rate),
              Inf)
     }
   ),

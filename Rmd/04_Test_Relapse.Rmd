@@ -51,11 +51,11 @@ sim = Simulation$new(humans = people,
                      mosquito_death_rate = 0.25,
                      p_relapse = 1)
 
-sim$plot_init()
+plot_init(sim)
 ```
 
 ```{r}
-for (i in 1:100) sim$iterate(1)
+for (i in 1:10) sim$iterate(1)
 ```
 
 # Verification tests
@@ -63,5 +63,5 @@ for (i in 1:100) sim$iterate(1)
 ```{r}
 # At least one new person has relapsed
 testthat::expect_equal("Relapse" %in% sim$history_infections$source, TRUE)
-sim$plot()
+plot(sim)
 ```

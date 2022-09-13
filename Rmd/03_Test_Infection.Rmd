@@ -49,7 +49,7 @@ sim = Simulation$new(humans = people,
                             bite_rate = 99999,
                             mosquito_death_rate = 0.25)
 
-sim$plot_init()
+plot_init(sim)
 ```
 
 ```{r}
@@ -63,5 +63,5 @@ for (i in 1:30) sim$iterate(1)
 testthat::expect_equal(sum(sim$history_infections$t_infection > 0) > 0, TRUE)
 # At least one person's source is Transmission
 testthat::expect_equal("Transmission" %in% sim$history_infections$source, TRUE)
-sim$plot()
+plot(sim)
 ```

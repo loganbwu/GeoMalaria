@@ -73,11 +73,11 @@ villagesim = Simulation$new(humans = people,
                             mosquito_death_rate = 0.25,
                             p_relapse = 0.1)
 
-villagesim$plot_mosquito_infectivity()
-villagesim$plot_human_infectivity()
-villagesim$plot_mosquito_migration()
-villagesim$plot_human_relapse()
-villagesim$plot_init()
+plot_mosquito_infectivity(villagesim)
+plot_human_infectivity(villagesim)
+plot_mosquito_migration(villagesim)
+plot_human_relapse(villagesim)
+plot_init(villagesim)
 ```
 
 ```{r}
@@ -104,5 +104,5 @@ for (t in seq_len(n_iter*3))  {
 
 tictoc::toc()
 
-villagesim$plot()
+plot(villagesim)
 ```
