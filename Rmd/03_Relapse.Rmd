@@ -1,0 +1,82 @@
+---
+title: "02 Construct Population"
+output: html_notebook
+---
+
+Construct a synthetic population and write to a data file.
+
+```{r}
+library(conflicted)
+library(raster)
+library(tidyverse)
+library(sf)
+library(lubridate)
+library(spatialEco)
+library(ambient)
+library(ggnewscale)
+library(patchwork)
+conflict_prefer("select", "dplyr")
+conflict_prefer("filter", "dplyr")
+
+R.files = list.files("../R", full.names = T)
+for (f in R.files) source(f)
+```
+
+Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10# of people spend half their time with another village.
+
+```{r}
+set.seed(0)
+houses = tibble(X = c(0,1.1), Y = 0)
+people = tibble(
+  ID = 1:2,
+  location_ix = 1:2,
+  location_proportions = 1
+)
+
+# Construct mosquito environment
+mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$X)),
+                                              xmax = ceiling(max(houses$X)),
+                                              ymin = floor(min(houses$Y)),
+                                              ymax = ceiling(max(houses$Y))))
+mosquito_raster[][mosquito_raster[] < 3000] = 0
+
+villagesim = Simulation$new(humans = people,
+                            locations = houses,
+                            mosquito_raster = mosquito_raster,
+                            duration_human_infectivity = 60,
+                            bite_rate = 0.1,
+                            mosquito_death_rate = 0.25)
+
+villagesim$plot_mosquito_infectivity()
+villagesim$plot_human_infectivity()
+villagesim$plot_mosquito_migration()
+villagesim$plot_human_relapse()
+villagesim$plot_init()
+```
+
+```{r}
+n_iter = 50
+pb = txtProgressBar(min = 0, max = n_iter * 4, style = 3)
+tictoc::tic(paste("Processing", n_iter, "iterations"))
+# Run outbreak
+for (t in seq_len(n_iter))  {
+  setTxtProgressBar(pb, t)
+  villagesim$iterate(1)
+}
+
+# Interrupt and clear all current humand and mosquito infections
+villagesim$humans = villagesim$humans %>%
+  mutate(t_infection = NA)
+villagesim$mosquito_infections = villagesim$mosquito_infections %>%
+  slice(0)
+
+# Run for more iterations
+for (t in seq_len(n_iter*3))  {
+  setTxtProgressBar(pb, t + n_iter)
+  villagesim$iterate(1)
+}
+
+tictoc::toc()
+
+villagesim$plot()
+```

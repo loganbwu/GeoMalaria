@@ -53,16 +53,12 @@ people_2 = tibble(location_ix = loc_ix_2,
                   t_infection = 0)
 people = bind_rows(people_1, people_2) %>%
   mutate(ID = row_number(),
-         t_relapse = Inf,
-         p_blood_gametocyte = 0,
          location_proportions = lapply(location_ix, function(x) {
            unnormed = rep(1, )
            rep(1/length(x), length(x))
          }))
 
 # Construct mosquito environment
-len_x = ceiling(max(houses$X)) - floor(min(houses$X))
-len_y = ceiling(max(houses$Y)) - floor(min(houses$Y))
 mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$X)),
                                               xmax = ceiling(max(houses$X)),
                                               ymin = floor(min(houses$Y)),
@@ -85,7 +81,7 @@ villagesim$plot_init()
 
 ```{r}
 n_iter = 50
-pb = txtProgressBar(min = 0, max = n_iter * 3, style = 3)
+pb = txtProgressBar(min = 0, max = n_iter * 4, style = 3)
 tictoc::tic(paste("Processing", n_iter, "iterations"))
 # Run outbreak
 for (t in seq_len(n_iter))  {
@@ -100,7 +96,7 @@ villagesim$mosquito_infections = villagesim$mosquito_infections %>%
   slice(0)
 
 # Run for more iterations
-for (t in seq_len(n_iter*2))  {
+for (t in seq_len(n_iter*3))  {
   setTxtProgressBar(pb, t + n_iter)
   villagesim$iterate(1)
 }

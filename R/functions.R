@@ -7,14 +7,19 @@ my_extract = function(...) {
 
 # Mosquitoes
 make_perlin_mosquitoes = function(env_dimensions, resolution=1) {
+  eps = 1e-5
+  xmn = floor((env_dimensions$xmin-eps)/resolution) * resolution
+  xmx = ceiling((env_dimensions$xmax+eps)/resolution) * resolution
+  ymn = floor((env_dimensions$ymin-eps)/resolution) * resolution
+  ymx = ceiling((env_dimensions$ymax+eps)/resolution) * resolution
   mosquito_raster = raster(
     vals = 0,
-    ncols = abs((env_dimensions$xmax - env_dimensions$xmin) / resolution),
-    nrows = abs((env_dimensions$ymax - env_dimensions$ymin) / resolution),
-    xmn = env_dimensions$xmin,
-    xmx = env_dimensions$xmax,
-    ymn = env_dimensions$ymin,
-    ymx = env_dimensions$ymax,
+    ncols = 100,#round((ymx-ymn)/resolution),
+    nrows = 100,#round((xmx-xmn)/resolution),
+    xmn = xmn,
+    xmx = xmx,
+    ymn = ymn,
+    ymx = ymx,
     crs = "NULL +units=km")
   noise = noise_perlin(dim(mosquito_raster)[1:2])
   mosquito_raster[] = (noise - min(noise)) * 10000

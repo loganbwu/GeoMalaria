@@ -53,6 +53,9 @@ Simulation = R6Class(
       
       # Parameters
       self$humans = humans
+      if (!"t_relapse" %in% names(self$humans)) {
+        self$humans$t_relapse = Inf
+      }
       self$locations = tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
       self$mosquito_infections = tibble(X = numeric(), Y = numeric(), infected_count = integer(), t_inoculation = numeric())
       self$set_mosquito_raster(mosquito_raster)
@@ -126,11 +129,12 @@ Simulation = R6Class(
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
       infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
         susceptible$t_relapse <= self$t
-      infect_IDs = susceptible$ID[infect_ix]
       is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
+      infect_IDs = susceptible$ID[infect_ix]
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
+      # clear and reschedule relapses
       self$humans$t_relapse[infect_IDs] = self$t + private$human_schedule_relapse(length(infect_IDs))
       
       # Update mosquito population
@@ -184,14 +188,17 @@ Simulation = R6Class(
         scale_color_manual(values = c("Importation"="tomato",
                                       "Susceptible"="grey")) +
         labs(title = "Initial state",
-             fill = "Mos/km^2", size = "Proportion\ntime spent",
-             x = NULL, y = NULL) +
-        theme_minimal()# +
-        # theme(legend.key.height = unit(10, "pt"),
-        #       axis.text = element_blank(),
-              # axis.ticks = element_blank(),
-              # panel.background = element_blank(),
-              # panel.grid = element_blank())
+             color = NULL,
+             fill = "Mos/km^2",
+             size = "Proportion\ntime spent",
+             x = NULL,
+             y = NULL) +
+        theme_minimal() +
+        theme(legend.key.height = unit(10, "pt"),
+              axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        panel.background = element_blank(),
+        panel.grid = element_blank())
     },
     
     
@@ -358,9 +365,9 @@ Simulation = R6Class(
     #' after decay, everyone retains partial protection
     human_immunity = function(dt) {
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
-                        c(1, 1, 0.5),
+                        c(1, 1, 1),
                         dt,
-                        yleft = 0, yright = 0.5)$y
+                        yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
     },
     
@@ -373,7 +380,7 @@ Simulation = R6Class(
     human_relapse_shape = 1,
     human_relapse_rate = 1/30,
     human_schedule_relapse = function(n) {
-      ifelse(runif(n) < 0.1,
+      ifelse(runif(n) < 0.5,
              14 + rgamma(n, private$human_relapse_shape, private$human_relapse_rate),
              Inf)
     }
