@@ -23,11 +23,12 @@ Simulation = R6Class(
     humans_infections = tibble(),
     
     # Outbreak history
-    history_infections = tibble(
-      ID = integer(),
-      t = numeric(),
-      is_relapse = logical()
-    ),
+    history_infections = NULL,
+    # history_infections = tibble(
+    #   ID = integer(),
+    #   t = numeric(),
+    #   is_relapse = logical()
+    # ),
     
     #' Initialize a simulation instance
     #' 
@@ -48,7 +49,7 @@ Simulation = R6Class(
       private$vis_raster = raster(vals=0, nrows=100, ncols=100,
                                   xmn=bounds@xmin, xmx=bounds@xmax,
                                   ymn=bounds@ymin, ymx=bounds@ymax, 
-                                  crs="+units=km")
+                                  crs="NULL +units=km")
       
       # Parameters
       self$humans = humans
@@ -66,6 +67,12 @@ Simulation = R6Class(
       }
       # Capture 95% of the distance travelled at the max lifespan
       self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(private$mosquito_travel * self$max_mosquito_lifespan))
+      
+      # Initialise history
+      self$history_infections = self$humans %>%
+        filter(!is.na(t_infection)) %>%
+        select(ID, t_infection) %>%
+        mutate(source = "Seed")
       
       invisible(self)
     },
@@ -147,8 +154,8 @@ Simulation = R6Class(
       self$history_infections = bind_rows(
         self$history_infections,
         tibble(ID = infect_IDs,
-               t = self$t,
-               is_relapse = is_relapse)
+               t_infection = self$t,
+               source = as.character(ifelse(is_relapse, "Relapse", "Transmission")))
       )
       
       invisible(self)
@@ -164,13 +171,13 @@ Simulation = R6Class(
     plot_init = function() {
       mosquito_data = as.data.frame(self$mosquito_raster, xy=T) %>%
         rename(X = x, Y = y)
-      humans = self$humans_expand %>%
+      human_data = self$humans_expand %>%
         mutate(State = case_when(t_infection == 0 ~ "Importation",
                                  TRUE ~ "Susceptible")) %>%
         arrange(t_infection)
       ggplot(mapping = aes(x=X, y=Y)) +
         geom_raster(data = mosquito_data, aes(fill=count)) +
-        geom_point(data = humans, aes(color=State, size=location_proportions), alpha=0.6) +
+        geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
         coord_equal() +
         scale_size_area(max_size = 3) +
         scale_fill_viridis_c(option = "magma") +
@@ -222,11 +229,16 @@ Simulation = R6Class(
     },
     
     plot_epicurve = function() {
+      ymax = self$history_infections %>%
+        filter(source != "Seed") %>%
+        count(t_infection) %>%
+        pull(n) %>%
+        max()
       self$history_infections %>%
-        mutate(is_relapse = ifelse(is_relapse, "Relapse", "Primary")) %>%
-        ggplot(aes(x = t, fill = is_relapse)) +
+        mutate(source = fct_inorder(source)) %>%
+        ggplot(aes(x = t_infection, fill = source)) +
         geom_bar(width = 0.9) +
-        coord_cartesian(xlim = c(0, self$t)) +
+        coord_cartesian(xlim = c(0, self$t), ylim = c(0, ymax)) +
         labs(x = "Infection time",
              fill = NULL,
              y = NULL) +
