@@ -1,9 +1,9 @@
 ---
-title: "03 Test Infection"
+title: "04 Test Relapse"
 output: html_notebook
 ---
 
-Verify that two people living in close proximity with lots of mosquitoes can be infected by each other.
+Verify that one person can relapse if scheduled manually and relapse if scheduled by an infection
 
 ```{r}
 library(conflicted)
@@ -33,7 +33,7 @@ people = tibble(
   t_relapse = 5
 )
 
-# Construct mosquito environment
+# Mosquitoes not needed for relapse
 mosquito_raster = raster(
   vals = 0,
   ncols = 1,
@@ -56,12 +56,14 @@ plot_init(sim)
 
 ```{r}
 for (i in 1:10) sim$iterate(1)
+sim$iterate(200)
+sim$iterate(1)
 ```
 
 # Verification tests
 
 ```{r}
-# At least one new person has relapsed
-testthat::expect_equal("Relapse" %in% sim$history_infections$source, TRUE)
+# Person relapses after the initial period then has another relapse scheduled
+testthat::expect_equal(sum(sim$history_infections$source == "Relapse"), 2)
 plot(sim)
 ```
