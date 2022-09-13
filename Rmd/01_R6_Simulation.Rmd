@@ -46,7 +46,8 @@ humans = tibble(
   })
 )
 
-mosquito_raster = make_perlin_mosquitoes(c(len_environment, len_environment))
+mosquito_raster = make_perlin_mosquitoes(list(xmin=0, ymin=0,
+                                              xmax=len_environment, ymax=len_environment))
 mosquito_raster[][mosquito_raster[] < 3000] = 0
 
 mysim = Simulation$new(humans = humans,

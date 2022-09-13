@@ -102,10 +102,10 @@ Simulation = R6Class(
                  private$mosquito_sporogony(self$t - t_inoculation))
       
       # Expose locations
-      self$locations$EIR = apply(locations, 1, private$calculate_EIR)
+      self$locations$EIR = apply(self$locations, 1, private$calculate_EIR)
       
       # Expose and infect humans
-      susceptible = mysim$humans %>%
+      susceptible = self$humans %>%
         filter(immunity < 1)
       susceptible_EIR = apply(
         susceptible,
@@ -118,9 +118,9 @@ Simulation = R6Class(
       ) * (1 - susceptible$immunity)
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
       infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
-        susceptible$t_relapse <= mysim$t
+        susceptible$t_relapse <= self$t
       infect_IDs = susceptible$ID[infect_ix]
-      is_relapse = (susceptible$t_relapse <= mysim$t)[infect_ix]
+      is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
       
       # Update human population
       self$humans$t_infection[infect_IDs] = self$t
@@ -179,12 +179,12 @@ Simulation = R6Class(
         labs(title = "Initial state",
              fill = "Mos/km^2", size = "Proportion\ntime spent",
              x = NULL, y = NULL) +
-        theme_minimal() +
-        theme(legend.key.height = unit(10, "pt"),
-              axis.text = element_blank(),
-              axis.ticks = element_blank(),
-              panel.background = element_blank(),
-              panel.grid = element_blank())
+        theme_minimal()# +
+        # theme(legend.key.height = unit(10, "pt"),
+        #       axis.text = element_blank(),
+              # axis.ticks = element_blank(),
+              # panel.background = element_blank(),
+              # panel.grid = element_blank())
     },
     
     
