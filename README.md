@@ -25,30 +25,6 @@ This is a basic example which shows you how to solve a common problem:
 
 ``` r
 library(GeoMalaria)
-#> Warning: replacing previous import 'dplyr::union' by 'raster::union' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'tidyr::extract' by 'raster::extract' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'dplyr::select' by 'raster::select' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'dplyr::intersect' by 'raster::intersect'
-#> when loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::origin' by 'lubridate::origin' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::intersect' by 'lubridate::intersect'
-#> when loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::union' by 'lubridate::union' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::shift' by 'spatialEco::shift' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'dplyr::combine' by 'spatialEco::combine'
-#> when loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::rotate' by 'ambient::rotate' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::stretch' by 'ambient::stretch' when
-#> loading 'GeoMalaria'
-#> Warning: replacing previous import 'raster::area' by 'patchwork::area' when
-#> loading 'GeoMalaria'
 ## basic example code
 ```
 

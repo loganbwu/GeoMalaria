@@ -1,12 +1,21 @@
 library(R6)
 
+#' Malaria simulation class
+#' 
+#' Agent-based simulation for P. vivax malaria in a spatial context
 Simulation = R6Class(
   "Simulation",
+  
+  #' @field t Current simulation time in days
+  #' @field mosquito_raster Raster object of mosquito counts
+  #' @field max_mosquito_lifespan Constrain mosquitoes to an absolute maximum lifespan
+  #' @field duration_human_infectivity Constrain infectious period
+  #' @field max_mosquito_flight_range Constrain mosquito diffusion distance in km
+  #' @field bite_rate Bites per mosquito per density
   public = list(
     # Constants
     t = 0,
     mosquito_raster = NULL,
-    n_humans = NULL,
     max_mosquito_lifespan = 0,
     duration_human_infectivity = NULL,
     max_mosquito_flight_range = NULL,
@@ -26,11 +35,6 @@ Simulation = R6Class(
     
     # Outbreak history
     history_infections = NULL,
-    # history_infections = tibble::tibble(
-    #   ID = integer(),
-    #   t = numeric(),
-    #   is_relapse = logical()
-    # ),
     
     #' Initialize a simulation instance
     #' 
@@ -51,8 +55,7 @@ Simulation = R6Class(
       bounds = extent(mosquito_raster)
       self$vis_raster = raster(vals=0, nrows=100, ncols=100,
                                   xmn=bounds@xmin, xmx=bounds@xmax,
-                                  ymn=bounds@ymin, ymx=bounds@ymax, 
-                                  crs="NULL +units=km")
+                                  ymn=bounds@ymin, ymx=bounds@ymax)
       
       # Parameters
       self$humans = humans
@@ -85,6 +88,14 @@ Simulation = R6Class(
     },
     
     
+    #' Iterate simulation
+    #' 
+    #' Advance simulation by `dt`. Calculates the current state of humans, infects
+    #' mosquitoes and humans simultaneously, updates humans and mosquitoes, then
+    #' stores observations for analysis.
+    #' 
+    #' @param dt Time to advance simulation by in days
+    #' @param debug Optional, print debug information
     iterate = function(dt, debug=FALSE) {
       self$t = self$t + dt
       
@@ -176,14 +187,22 @@ Simulation = R6Class(
     
     #' Recompute location mosquito densities from a raster
     #' 
-    #' @return mosquito_raster for further assignment
+    #' Updates simulation's raster and densities at each location
+    #' 
+    #' @param mosquito_raster Raster of mosquito densities
     set_mosquito_raster = function(mosquito_raster) {
       self$locations$mosquito_density = my_extract(mosquito_raster, self$locations[c("X", "Y")])
       self$mosquito_raster = mosquito_raster
       invisible(mosquito_raster)
     },
     
+    #' Entomological inoculation rate
+    #' 
     #' Calculate EIR at a location with X and Y elements
+    #' 
+    #' @param loc List or dataframe with `X` and `Y` columns
+    #' 
+    #' @return Numeric vector of EIR
     calculate_EIR = function(loc) {
       # Calculate total EIR=HBR*SIR from all mosquito infection events
       with(
@@ -197,17 +216,31 @@ Simulation = R6Class(
     },
     
     #' Proportion of mosquitoes that survive over time
+    #' 
+    #' @param dt Time since mosquito inoculation in days
     mosquito_survival = function(dt) {
       survival = dexp(dt, rate=self$mosquito_death_rate) / self$mosquito_death_rate
     },
     
     #' Proportion of mosquitoes with sporozoites over time
+    #' 
+    #' @param dt Time since mosquito inoculation in days
     mosquito_sporogony = function(dt) {
       approx(c(8, 10), c(0, 1), dt, yleft=0, yright=1)$y
     },
     
-    # 1-D variance of mosquito travel in (km/day)^2
     mosquito_travel = 1^2,
+    #' Mosquito density
+    #' 
+    #' Mosquito density calculated if they started at a point and traveled `dx` and
+    #' `dy` in time `dt`. Variance is constant at (km/day)^2. Uses the Laplace isometric
+    #' diffusion solution.
+    #' 
+    #' @param dx Distance traveled horizontally in km
+    #' @param dy Distance traveled vertically
+    #' @param dt Time since origin in days
+    #' 
+    #' @return Relative mosquito density
     mosquito_migration = function(dx, dy, dt) {
       exp(dnorm(dx, sd=sqrt(self$mosquito_travel * dt), log=T) + 
             dnorm(dy, sd=sqrt(self$mosquito_travel * dt), log=T))
@@ -215,7 +248,7 @@ Simulation = R6Class(
     
     #' Lifecycle stages for P. vivax in humans after inoculation
     #'
-    #' @param t days since inoculation
+    #' @param dt Time since inoculation in days
     #' 
     #' @return vector of probability of infecting mosquito with gametocytes in the grid cell
     human_infectivity = function(dt) {
@@ -231,6 +264,8 @@ Simulation = R6Class(
     #' Full immunity then decays to 50% 
     #' scales # bites not # susceptible people. E.g. no one retains complete immunity
     #' after decay, everyone retains partial protection
+    #' 
+    #' @param dt Time since infection in days
     human_immunity = function(dt) {
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
                         c(1, 1, 1),
@@ -239,14 +274,19 @@ Simulation = R6Class(
       replace_na(immunity, 0)
     },
     
+    
+    human_relapse_shape = 1,
+    human_relapse_rate = 1/30,
     #' Human relapse distribution
     #' 
     #' Schedule a relapse infection for number of days after the primary infection.
     #' NA value is no relapse.
     #' shape = (mean / sd)^2
     #' rate =  mean / sd^2
-    human_relapse_shape = 1,
-    human_relapse_rate = 1/30,
+    #' 
+    #' @param n Number of people to schedule relapses for
+    #' 
+    #' @return Time until scheduled relapse, `Inf` if no relapse
     human_schedule_relapse = function(n) {
       ifelse(runif(n) < self$p_relapse,
              14 + rgamma(n, self$human_relapse_shape, self$human_relapse_rate),
@@ -260,6 +300,8 @@ Simulation = R6Class(
     #' Representation of humans with only one set of coordinates
     #' 
     #' Just places people at their highest proportion location
+    #' 
+    #' @return Tibble of humans
     humans_collapse = function() {
       self$humans %>%
         mutate(location_ix = unlist(map(location_ix, first)),
@@ -268,6 +310,8 @@ Simulation = R6Class(
     },
     
     #' Represent humans at all of their coordinates
+    #' 
+    #' @return Tibble of humans duplicated if at multiple locations
     humans_expand = function() {
       self$humans %>%
         unnest(cols=c(location_ix, location_proportions)) %>%

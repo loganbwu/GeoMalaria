@@ -1,12 +1,21 @@
-print.Simulation = function(sim) {
+#' Print simulation
+#' 
+#' @param x Simulation object
+#' @param ... Additional arguments
+print.Simulation = function(x, ...) {
   print(
     list(
-      "t" = sim$t,
-      "History" = sim$history_infections
+      "t" = x$t,
+      "History" = x$history_infections
     )
   )
 }
 
+#' Plot initial state of a simulation
+#' 
+#' Valid at any time period, output should not depend on whether simulation is run
+#' 
+#' @param sim Simulation object
 plot_init = function(sim) {
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T) %>%
     rename(X = x, Y = y)
@@ -36,12 +45,21 @@ plot_init = function(sim) {
           panel.grid = element_blank())
 }
 
-plot.Simulation = function(sim) {
-  p_state = plot_state(sim)
-  p_epicurve = plot_epicurve(sim)
+#' Plot current state of a simulation
+#' 
+#' Plots map with epicurve
+#' 
+#' @param x Simulation object
+#' @param ... Additional arguments
+plot.Simulation = function(x, ...) {
+  p_state = plot_state(x)
+  p_epicurve = plot_epicurve(x)
   p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
 }
 
+#' Plot map of simulation
+#' 
+#' @param sim Simulation object
 plot_state = function(sim) {
   humans = sim$humans_collapse %>%
     mutate(Infection = case_when(t_infection == sim$t ~ "New",
@@ -73,6 +91,9 @@ plot_state = function(sim) {
           panel.grid = element_blank())
 }
 
+#' Plot epidemic curve
+#' 
+#' @param sim Simulation object
 plot_epicurve = function(sim) {
   ymax = sim$history_infections %>%
     filter(source != "Seed") %>%
@@ -94,6 +115,8 @@ plot_epicurve = function(sim) {
 
 
 #' Plot spread of mosquitoes over distance
+#' 
+#' @param sim Simulation object
 plot_mosquito_migration = function(sim) {
   DX = seq(-sim$max_mosquito_flight_range,
            sim$max_mosquito_flight_range,
@@ -103,11 +126,15 @@ plot_mosquito_migration = function(sim) {
     mutate(density = sim$mosquito_migration(dx, 0, dt)) %>%
     ggplot(aes(x=dx, y=density, color=dt, group=dt)) +
     geom_line() +
-    scale_color_continuous(breaks = DT) +
-    labs(x = "Distance (1D)", color = "Days since\nblood meal")
+    scale_color_binned(breaks = DT) +
+    labs(title = "Distance travelled by mosquitoes",
+         x = "Distance (1D shown; actual diffusion is 2D)", y = "Density",
+         color = "Days since\nblood meal")
 }
 
-
+#' Plot mosquito infectivity curve
+#' 
+#' @param sim Simulation object
 plot_mosquito_infectivity = function(sim) {
   tibble(dt = seq(0, sim$max_mosquito_lifespan, length.out=1000),
          survival = sim$mosquito_survival(dt),
@@ -116,9 +143,13 @@ plot_mosquito_infectivity = function(sim) {
     pivot_longer(cols = -dt) %>%
     ggplot(aes(x = dt, y = value, color = name, linetype = name)) +
     geom_line() +
-    labs(x = "Days since blood meal", y = "Probability", color = "Attribute")
+    labs(title = "Inoculation probability after blood meal",
+         x = "Days since blood meal", y = "Probability", color = "Attribute")
 }
 
+#' Plot human infectivity curve
+#' 
+#' @param sim Simulation object
 plot_human_infectivity = function(sim) {
   tibble(dt = seq(0, 2*sim$duration_human_infectivity, length.out=1000),
          gametocyte_load = sim$human_infectivity(dt),
@@ -130,10 +161,13 @@ plot_human_infectivity = function(sim) {
          x = "Days since human infection", y = "Probability", color = "Attribute")
 }
 
+#' Plot human relapse risk
+#' 
+#' @param sim Simulation object
 plot_human_relapse = function(sim) {
   tibble(dt = sim$human_schedule_relapse(10000)) %>%
     ggplot(aes(x = dt)) +
-    geom_density(fill = "steelblue") +
+    geom_density(fill = "steelblue", alpha = 0.6) +
     labs(title = "Relapse density",
          x = "Days since infection", y = "Probability")
 }

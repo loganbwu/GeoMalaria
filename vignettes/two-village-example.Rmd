@@ -19,10 +19,9 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(GeoMalaria)
 library(dplyr)
-library(tidyr)
 ```
 
-Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10# of people spend half their time with another village.
+Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10% of people in village 2 also spend half their time in village 1.
 
 ```{r}
 set.seed(0)
@@ -85,7 +84,6 @@ plot_init(villagesim)
 ```{r}
 # Begin outbreak
 for (t in seq_len(50))  {
-  # setTxtProgressBar(pb, t)
   villagesim$iterate(1)
 }
 

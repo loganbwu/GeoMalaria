@@ -2,11 +2,27 @@
 % Please edit documentation in R/Simulation.R
 \name{Simulation}
 \alias{Simulation}
-\title{Initialize a simulation instance}
+\title{Malaria simulation class}
 \description{
-Initialize a simulation instance
+Agent-based simulation for P. vivax malaria in a spatial context
+}
+\section{Public fields}{
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{t}}{Current simulation time in days}
 
-Initialize a simulation instance
+\item{\code{mosquito_raster}}{Raster object of mosquito counts}
+
+\item{\code{max_mosquito_lifespan}}{Constrain mosquitoes to an absolute maximum lifespan}
+
+\item{\code{duration_human_infectivity}}{Constrain infectious period}
+
+\item{\code{max_mosquito_flight_range}}{Constrain mosquito diffusion distance in km}
+
+\item{\code{bite_rate}}{Bites per mosquito per density
+Initialize a simulation instance}
+}
+\if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -52,7 +68,11 @@ Initialize a simulation instance
 \item{\code{mosquito_death_rate}}{proportion of mosquitoes that die per day}
 
 \item{\code{bite_rate}}{probability of each mosquito biting a human in a cell
-Recompute location mosquito densities from a raster}
+Iterate simulation
+
+Advance simulation by `dt`. Calculates the current state of humans, infects
+mosquitoes and humans simultaneously, updates humans and mosquitoes, then
+stores observations for analysis.}
 }
 \if{html}{\out{</div>}}
 }
@@ -65,6 +85,18 @@ Recompute location mosquito densities from a raster}
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$iterate(dt, debug = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dt}}{Time to advance simulation by in days}
+
+\item{\code{debug}}{Optional, print debug information
+Recompute location mosquito densities from a raster
+
+Updates simulation's raster and densities at each location}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-set_mosquito_raster"></a>}}
@@ -74,12 +106,15 @@ Recompute location mosquito densities from a raster}
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$set_mosquito_raster(mosquito_raster)}\if{html}{\out{</div>}}
 }
 
-\subsection{Returns}{
-mosquito_raster for further assignment
-Calculate EIR at a location with X and Y elements
-Proportion of mosquitoes that survive over time
-Proportion of mosquitoes with sporozoites over time
-Lifecycle stages for P. vivax in humans after inoculation
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{mosquito_raster}}{Raster of mosquito densities
+Entomological inoculation rate
+
+Calculate EIR at a location with X and Y elements}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -90,6 +125,17 @@ Lifecycle stages for P. vivax in humans after inoculation
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$calculate_EIR(loc)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{loc}}{List or dataframe with `X` and `Y` columns}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Numeric vector of EIR
+Proportion of mosquitoes that survive over time
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-mosquito_survival"></a>}}
@@ -99,6 +145,14 @@ Lifecycle stages for P. vivax in humans after inoculation
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_survival(dt)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dt}}{Time since mosquito inoculation in days
+Proportion of mosquitoes with sporozoites over time}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-mosquito_sporogony"></a>}}
@@ -108,6 +162,18 @@ Lifecycle stages for P. vivax in humans after inoculation
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_sporogony(dt)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dt}}{Time since mosquito inoculation in days
+Mosquito density
+
+Mosquito density calculated if they started at a point and traveled `dx` and
+`dy` in time `dt`. Variance is constant at (km/day)^2. Uses the Laplace isometric
+diffusion solution.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-mosquito_migration"></a>}}
@@ -117,6 +183,21 @@ Lifecycle stages for P. vivax in humans after inoculation
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_migration(dx, dy, dt)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dx}}{Distance traveled horizontally in km}
+
+\item{\code{dy}}{Distance traveled vertically}
+
+\item{\code{dt}}{Time since origin in days}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Relative mosquito density
+Lifecycle stages for P. vivax in humans after inoculation
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-human_infectivity"></a>}}
@@ -129,7 +210,7 @@ Lifecycle stages for P. vivax in humans after inoculation
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{t}}{days since inoculation}
+\item{\code{dt}}{Time since inoculation in days}
 }
 \if{html}{\out{</div>}}
 }
@@ -140,16 +221,6 @@ Human immunity profile over time
 Full immunity then decays to 50% 
 scales # bites not # susceptible people. E.g. no one retains complete immunity
 after decay, everyone retains partial protection
-Human relapse distribution
-
-Schedule a relapse infection for number of days after the primary infection.
-NA value is no relapse.
-shape = (mean / sd)^2
-rate =  mean / sd^2
-Representation of humans with only one set of coordinates
-
-Just places people at their highest proportion location
-Represent humans at all of their coordinates
 }
 }
 \if{html}{\out{<hr>}}
@@ -160,6 +231,19 @@ Represent humans at all of their coordinates
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$human_immunity(dt)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{dt}}{Time since infection in days
+Human relapse distribution
+
+Schedule a relapse infection for number of days after the primary infection.
+NA value is no relapse.
+shape = (mean / sd)^2
+rate =  mean / sd^2}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-human_schedule_relapse"></a>}}
@@ -169,6 +253,19 @@ Represent humans at all of their coordinates
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$human_schedule_relapse(n)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{n}}{Number of people to schedule relapses for}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Time until scheduled relapse, `Inf` if no relapse
+Representation of humans with only one set of coordinates
+
+Just places people at their highest proportion location
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Simulation-clone"></a>}}

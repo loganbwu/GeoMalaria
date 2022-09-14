@@ -6,6 +6,9 @@
 \usage{
 plot_mosquito_migration(sim)
 }
+\arguments{
+\item{sim}{Simulation object}
+}
 \description{
 Plot spread of mosquitoes over distance
 }

@@ -30,8 +30,7 @@ make_perlin_mosquitoes = function(env_dimensions, resolution=1) {
     xmn = xmn,
     xmx = xmx,
     ymn = ymn,
-    ymx = ymx,
-    crs = "NULL +units=km")
+    ymx = ymx)
   noise = noise_perlin(dim(mosquito_raster)[1:2])
   mosquito_raster[] = (noise - min(noise)) * 10000
   
