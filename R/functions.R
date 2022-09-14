@@ -1,3 +1,8 @@
+#' Extract values from Raster objects
+#' 
+#' See `raster::extract` but returns NA if there are no values to be extracted.
+#' 
+#' @param ... Arguments to be passed to `raster::extract`
 my_extract = function(...) {
   values = raster::extract(...)
   if (is.null(values)) return(NA_real_)
@@ -5,7 +10,13 @@ my_extract = function(...) {
 }
 
 
-# Mosquitoes
+#' Make perlin raster of mosquitoes
+#' 
+#' Creates a raster to specified dimensions and resolution containing a layer
+#' of perlin noise.
+#' 
+#' @param env_dimensions List of xmn, xmx, ymn, and ymx
+#' @param resolution Optional, cells will have edge lengths of this size
 make_perlin_mosquitoes = function(env_dimensions, resolution=1) {
   eps = 1e-5
   xmn = floor((env_dimensions$xmin-eps)/resolution) * resolution

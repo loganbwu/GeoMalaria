@@ -1,0 +1,103 @@
+---
+title: "Two-Village Example"
+output:
+  rmarkdown::html_document:
+    fig_width: 10
+vignette: >
+  %\VignetteIndexEntry{Two-Village Example}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(GeoMalaria)
+library(dplyr)
+library(tidyr)
+```
+
+Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10# of people spend half their time with another village.
+
+```{r}
+set.seed(0)
+pop_1 = 200
+pop_2 = 100
+n_houses_1 = 30
+n_houses_2 = 15
+# Construct living locations
+houses_1 = tibble(X = rnorm(n_houses_1, 0, 15),
+                  Y = rnorm(n_houses_1, 0, 15)) %>%
+  mutate(ID = row_number())
+houses_2 = tibble(X = rnorm(n_houses_2, 100, 10),
+                  Y = rnorm(n_houses_2, 0, 10)) %>%
+  mutate(ID = row_number() + max(houses_1$ID))
+houses = bind_rows(houses_1, houses_2)
+loc_ix_1 = as.list(sample(houses_1$ID, pop_1, T))
+loc_ix_2 = as.list(sample(houses_2$ID, pop_2, T))
+# 10% of people in village 2 spend 50% of time in village 1
+for (i in 1:round(pop_2 * 0.1)) {
+  loc_ix_2[[i]] = c(loc_ix_2[[i]], sample(houses_1$ID, 1))
+}
+location_ix = c(loc_ix_1, loc_ix_2)
+
+# Construct people
+people_1 = tibble(location_ix = loc_ix_1,
+                  t_infection = NA_real_)
+people_2 = tibble(location_ix = loc_ix_2,
+                  t_infection = 0)
+people = bind_rows(people_1, people_2) %>%
+  mutate(ID = row_number(),
+         location_proportions = lapply(location_ix, function(x) {
+           unnormed = rep(1, )
+           rep(1/length(x), length(x))
+         }))
+
+# Construct mosquito environment
+mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$X)),
+                                              xmax = ceiling(max(houses$X)),
+                                              ymin = floor(min(houses$Y)),
+                                              ymax = ceiling(max(houses$Y))))
+mosquito_raster[][mosquito_raster[] < 3000] = 0
+
+villagesim = Simulation$new(humans = people,
+                            locations = houses,
+                            mosquito_raster = mosquito_raster,
+                            duration_human_infectivity = 60,
+                            bite_rate = 0.1,
+                            mosquito_death_rate = 0.25,
+                            p_relapse = 0.1)
+
+plot_mosquito_infectivity(villagesim)
+plot_human_infectivity(villagesim)
+plot_mosquito_migration(villagesim)
+plot_human_relapse(villagesim)
+plot_init(villagesim)
+```
+
+# Run simulation
+
+```{r}
+# Begin outbreak
+for (t in seq_len(50))  {
+  # setTxtProgressBar(pb, t)
+  villagesim$iterate(1)
+}
+
+# Interrupt and clear all current human and mosquito infections
+villagesim$humans = villagesim$humans %>%
+  mutate(t_infection = NA)
+villagesim$mosquito_infections = villagesim$mosquito_infections %>%
+  slice(0)
+
+# Run for more iterations
+for (t in seq_len(150))  {
+  villagesim$iterate(1)
+}
+
+plot(villagesim)

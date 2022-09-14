@@ -1,1 +1,21 @@
 exportPattern("^[[:alpha:]]+")
+
+import(dplyr)
+import(tidyr)
+import(ggplot2)
+importFrom(raster, raster)
+importFrom(raster, extent)
+importFrom(raster, as.data.frame)
+importFrom(purrr, map)
+import(sf)
+import(lubridate)
+import(forcats)
+import(ambient)
+import(patchwork)
+import(ggnewscale)
+
+importFrom(stats, "dt")
+importFrom(stats, "density")
+importFrom(magrittr, "%>%")
+
+S3method(plot, Simulation)

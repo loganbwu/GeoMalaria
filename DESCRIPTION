@@ -6,9 +6,28 @@ Author: Logan Wu
 Maintainer: Logan Wu <wu.l@wehi.edu.au>
 Description: Spatial malaria simulation with individual humans and probabilistic
     mosquitoes.
-License: What license is it under?
+License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
+    magrittr,
     dplyr,
-    tidyr
+    tidyr,
+    ggplot2,
+    raster,
+    sf,
+    lubridate,
+    forcats,
+    ambient,
+    patchwork,
+    magrittr,
+    purrr,
+    ggnewscale,
+    terra (== 1.6-3)
+RoxygenNote: 7.2.1
+Suggests: 
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
+VignetteBuilder: knitr
