@@ -48,9 +48,9 @@ test_that("iff relapse is disabled <=> MDA will stop transmission", {
                                p_relapse = 0.5)
   
   # Simulate transmission for a while
-  for (i in 1:100) {
-    sim_norelapse$iterate(1)
-    sim_relapse$iterate(1)
+  for (i in 1:30) {
+    sim_norelapse$iterate(3)
+    sim_relapse$iterate(3)
   }
   
   # Interrupt and clear all current humand and mosquito infections

@@ -4,7 +4,7 @@
 \alias{plot.Simulation}
 \title{Plot current state of a simulation}
 \usage{
-plot.Simulation(x, ...)
+\method{plot}{Simulation}(x, ...)
 }
 \arguments{
 \item{x}{Simulation object}

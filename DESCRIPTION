@@ -19,7 +19,6 @@ Imports:
     forcats,
     ambient,
     patchwork,
-    magrittr,
     purrr,
     ggnewscale
 RoxygenNote: 7.2.1
