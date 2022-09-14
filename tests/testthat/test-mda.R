@@ -65,9 +65,9 @@ test_that("iff relapse is disabled <=> MDA will stop transmission", {
     slice(0)
   
   # Simulate transmission for a while
-  for (i in 1:100) {
-    sim_norelapse$iterate(1)
-    sim_relapse$iterate(1)
+  for (i in 1:30) {
+    sim_norelapse$iterate(3)
+    sim_relapse$iterate(3)
   }
   
   # Confirm no infections occur after MDA

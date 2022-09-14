@@ -29,8 +29,8 @@ Simulation = R6Class(
     locations = NULL,
     vis_raster = NULL,
     mosquito_infections = tibble::tibble(X = numeric(),
-                                 Y = numeric(),
-                                 t_inoculation = numeric()),
+                                         Y = numeric(),
+                                         t_inoculation = numeric()),
     humans_infections = tibble::tibble(),
     
     # Outbreak history
@@ -54,8 +54,8 @@ Simulation = R6Class(
       # Raster for fine visualisation of continuous fields
       bounds = extent(mosquito_raster)
       self$vis_raster = raster(vals=0, nrows=100, ncols=100,
-                                  xmn=bounds@xmin, xmx=bounds@xmax,
-                                  ymn=bounds@ymin, ymx=bounds@ymax)
+                               xmn=bounds@xmin, xmx=bounds@xmax,
+                               ymn=bounds@ymin, ymx=bounds@ymax)
       
       # Parameters
       self$humans = humans
@@ -79,10 +79,8 @@ Simulation = R6Class(
       self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(self$mosquito_travel * self$max_mosquito_lifespan))
       
       # Initialise history
-      self$history_infections = self$humans %>%
-        filter(!is.na(t_infection)) %>%
-        select(ID, t_infection) %>%
-        mutate(source = "Seed")
+      self$history_infections = cbind(self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
+                                      source = "Seed")
       
       invisible(self)
     },
@@ -100,14 +98,12 @@ Simulation = R6Class(
       self$t = self$t + dt
       
       # Calculate current state of human infectivity and immunity
-      self$humans = self$humans %>%
-        mutate(p_blood_gametocyte = self$human_infectivity(self$t - t_infection),
-               immunity = self$human_immunity(self$t - t_infection))
+      self$humans$p_blood_gametocyte = self$human_infectivity(self$t - self$humans$t_infection)
+      self$humans$immunity = self$human_immunity(self$t - self$humans$t_infection)
       
-      # Calculate total human gametocyte load per location
+      # Sum total human gametocyte load per location
       self$locations$gametocyte_load = 0
-      infected = self$humans %>%
-        filter(p_blood_gametocyte > 0)
+      infected = self$humans[self$humans$p_blood_gametocyte > 0,]
       for (i in seq_len(nrow(infected))) {
         with(infected, {
           ix = location_ix[[i]]
@@ -118,21 +114,20 @@ Simulation = R6Class(
       }
       
       # Calculate state of infected mosquitoes
-      self$mosquito_infections = self$mosquito_infections %>%
-        # Remove expired events
-        filter(self$t - t_inoculation <= self$max_mosquito_lifespan) %>%
-        # Calculate current infectivity of infected mosquito clouds integrated over space   # Number of live mosquitoes with mature sporozoites from this event
-        mutate(infectious_count = infected_count *
-                 self$mosquito_survival(self$t - t_inoculation) *
-                 self$mosquito_sporogony(self$t - t_inoculation))
+      # - Remove expired events
+      self$mosquito_infections = self$mosquito_infections[
+        self$t - self$mosquito_infections$t_inoculation <= self$max_mosquito_lifespan,]
+      # - Calculate current infectivity of infected mosquito clouds integrated over space
+      #   i.e., number of live mosquitoes with mature sporozoites from this event
+      self$mosquito_infections$infectious_count = self$mosquito_infections$infected_count *
+        self$mosquito_survival(self$t - self$mosquito_infections$t_inoculation) *
+        self$mosquito_sporogony(self$t - self$mosquito_infections$t_inoculation)
       
       # Expose locations
       self$locations$EIR = apply(self$locations, 1, self$calculate_EIR)
       
-      # Expose and infect humans
-      susceptible = self$humans %>%
-        # People who are not immune or are due to relapse
-        filter(immunity < 1 | t_relapse <= self$t)
+      # Expose and infect humans who are not immune or are due to relapse
+      susceptible = self$humans[self$humans$immunity < 1 | self$humans$t_relapse <= self$t,]
       if (nrow(susceptible) > 0) {
         susceptible_EIR = apply(
           susceptible,
@@ -144,7 +139,7 @@ Simulation = R6Class(
           }
         ) * (1 - susceptible$immunity)
       } else {
-        susceptible_EIR = numeric()
+        susceptible_EIR = numeric() # otherwise it'll be undefined
       }
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
       infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
@@ -158,28 +153,28 @@ Simulation = R6Class(
       self$humans$t_relapse[infect_IDs] = self$t + self$human_schedule_relapse(length(infect_IDs))
       
       # Update mosquito population
-      # Expose mosquitoes at human locations
-      new_mosquito_infections = self$locations %>%
-        filter(gametocyte_load > 0) %>%
-        # Infect mosquitoes at rate (assume no susc. depletion)
-        # Number of new infected mosquitoes generated by this human at this step
-        mutate(infected_count = gametocyte_load *
-                 mosquito_density * # N.B. local density could potentially be recomputed
-                 self$bite_rate *
-                 dt,
-               infectious_count = 0, # gets overwritten later anyway but prevent NAs
-               t_inoculation = self$t) %>%
-        filter(infected_count > 0) %>% # remove zero mosquito/gametocyte events
-        select(X, Y, t_inoculation, infected_count, infectious_count)
-      # Add potential mosquitoes to list
+      # Expose mosquitoes at locations that have both gametocytes and mosquitoes
+      new_mosquito_infections = self$locations[self$locations$gametocyte_load > 0 &
+                                                 self$locations$mosquito_density > 0,
+                                               c("X", "Y", "gametocyte_load", "mosquito_density")]
+      # Infect mosquitoes at rate (assume no susc. depletion)
+      # Number of new infected mosquitoes generated by this human at this step
+      new_mosquito_infections$infected_count = new_mosquito_infections$gametocyte_load *
+        new_mosquito_infections$mosquito_density * # N.B. local density could potentially be recomputed
+        self$bite_rate *
+        dt
+      new_mosquito_infections$infectious_count = 0 # gets overwritten later anyway but prevent NAs
+      new_mosquito_infections$t_inoculation = self$t
+      new_mosquito_infections$gametocyte_load <- new_mosquito_infections$mosquito_density <- NULL
+      # Add new potential mosquitoes to list
       self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
       
       # Take observations
       self$history_infections = bind_rows(
         self$history_infections,
         tibble::tibble(ID = infect_IDs,
-               t_infection = self$t,
-               source = as.character(ifelse(is_relapse, "Relapse", "Transmission")))
+                       t_infection = self$t,
+                       source = as.character(ifelse(is_relapse, "Relapse", "Transmission")))
       )
       
       invisible(self)

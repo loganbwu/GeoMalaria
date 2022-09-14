@@ -17,6 +17,9 @@ print.Simulation = function(x, ...) {
 #' 
 #' @param sim Simulation object
 plot_init = function(sim) {
+  # Add visible bindings
+  x <- y <- t_infection <- X <- Y <- State <- location_proportions <- NULL
+  
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T) %>%
     rename(X = x, Y = y)
   human_data = sim$humans_expand %>%
@@ -61,6 +64,9 @@ plot.Simulation = function(x, ...) {
 #' 
 #' @param sim Simulation object
 plot_state = function(sim) {
+  # Add visible bindings
+  x <- y <- X <- Y <- ento_inoculation_rate <- p_blood_gametocyte <- Infection <- NULL
+  
   humans = sim$humans_collapse %>%
     mutate(Infection = case_when(t_infection == sim$t ~ "New",
                                  ID %in% sim$history_infections$ID ~ "Historical",
@@ -95,6 +101,9 @@ plot_state = function(sim) {
 #' 
 #' @param sim Simulation object
 plot_epicurve = function(sim) {
+  # Add visible bindings
+  t_infection <- NULL
+  
   ymax = sim$history_infections %>%
     filter(source != "Seed") %>%
     count(t_infection) %>%
@@ -118,6 +127,9 @@ plot_epicurve = function(sim) {
 #' 
 #' @param sim Simulation object
 plot_mosquito_migration = function(sim) {
+  # Add visible bindings
+  dx <- NULL
+  
   DX = seq(-sim$max_mosquito_flight_range,
            sim$max_mosquito_flight_range,
            length.out = 100)
@@ -136,6 +148,9 @@ plot_mosquito_migration = function(sim) {
 #' 
 #' @param sim Simulation object
 plot_mosquito_infectivity = function(sim) {
+  # Add visible bindings
+  survival <- sporozoites <- value <- name <- NULL
+  
   tibble(dt = seq(0, sim$max_mosquito_lifespan, length.out=1000),
          survival = sim$mosquito_survival(dt),
          sporozoites = sim$mosquito_sporogony(dt),
@@ -151,6 +166,9 @@ plot_mosquito_infectivity = function(sim) {
 #' 
 #' @param sim Simulation object
 plot_human_infectivity = function(sim) {
+  # Add visible bindings
+  value <- name <- NULL
+  
   tibble(dt = seq(0, 2*sim$duration_human_infectivity, length.out=1000),
          gametocyte_load = sim$human_infectivity(dt),
          immunity = sim$human_immunity(dt)) %>%
