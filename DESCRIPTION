@@ -10,17 +10,18 @@ License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: 
-    dplyr,
-    tidyr,
-    ggplot2,
-    raster,
-    sf,
-    lubridate,
-    forcats,
     ambient,
+    dplyr,
+    forcats,
+    ggnewscale,
+    ggplot2,
+    magrittr,
+    lubridate,
     patchwork,
     purrr,
-    ggnewscale
+    sf,
+    raster,
+    tidyr
 RoxygenNote: 7.2.1
 Suggests: 
     knitr,
