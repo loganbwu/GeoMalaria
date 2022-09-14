@@ -1,0 +1,14 @@
+Package: GeoMalaria
+Type: Package
+Title: Spatial Malaria Simulation
+Version: 0.1.0
+Author: Logan Wu
+Maintainer: Logan Wu <wu.l@wehi.edu.au>
+Description: Spatial malaria simulation with individual humans and probabilistic
+    mosquitoes.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    dplyr,
+    tidyr

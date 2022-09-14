@@ -19,14 +19,14 @@ Simulation = R6Class(
     humans = NULL,
     locations = NULL,
     vis_raster = NULL,
-    mosquito_infections = tibble(X = numeric(),
+    mosquito_infections = tibble::tibble(X = numeric(),
                                  Y = numeric(),
                                  t_inoculation = numeric()),
-    humans_infections = tibble(),
+    humans_infections = tibble::tibble(),
     
     # Outbreak history
     history_infections = NULL,
-    # history_infections = tibble(
+    # history_infections = tibble::tibble(
     #   ID = integer(),
     #   t = numeric(),
     #   is_relapse = logical()
@@ -59,8 +59,8 @@ Simulation = R6Class(
       if (!"t_relapse" %in% names(self$humans)) {
         self$humans$t_relapse = Inf
       }
-      self$locations = tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
-      self$mosquito_infections = tibble(X = numeric(), Y = numeric(), infected_count = integer(), t_inoculation = numeric())
+      self$locations = tibble::tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
+      self$mosquito_infections = tibble::tibble(X = numeric(), Y = numeric(), infected_count = integer(), t_inoculation = numeric())
       self$set_mosquito_raster(mosquito_raster)
       self$duration_human_infectivity = duration_human_infectivity
       self$bite_rate = bite_rate
@@ -166,7 +166,7 @@ Simulation = R6Class(
       # Take observations
       self$history_infections = bind_rows(
         self$history_infections,
-        tibble(ID = infect_IDs,
+        tibble::tibble(ID = infect_IDs,
                t_infection = self$t,
                source = as.character(ifelse(is_relapse, "Relapse", "Transmission")))
       )
