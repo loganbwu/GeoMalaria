@@ -112,7 +112,7 @@ plot_epicurve = function(sim) {
   sim$history_infections %>%
     mutate(source = fct_inorder(source)) %>%
     ggplot(aes(x = t_infection, fill = source)) +
-    geom_bar(width = 0.9) +
+    geom_bar(width = 0.9 * sim$min_dt) +
     coord_cartesian(xlim = c(0, sim$t), ylim = c(0, max(1, ymax))) +
     labs(x = "Infection time",
          fill = NULL,

@@ -7,6 +7,7 @@ Simulation = R6Class(
   "Simulation",
   
   #' @field t Current simulation time in days
+  #' @field min_dt Smallest time step used so far
   #' @field mosquito_raster Raster object of mosquito counts
   #' @field max_mosquito_lifespan Constrain mosquitoes to an absolute maximum lifespan
   #' @field duration_human_infectivity Constrain infectious period
@@ -19,6 +20,7 @@ Simulation = R6Class(
   public = list(
     # Constants
     t = 0,
+    min_dt = 1,
     mosquito_raster = NULL,
     max_mosquito_lifespan = 0, # calculated on initialisation
     duration_human_infectivity = NULL,
@@ -114,6 +116,7 @@ Simulation = R6Class(
     #' @param debug Optional, print debug information
     iterate = function(dt, debug=FALSE) {
       self$t = self$t + dt
+      self$min_dt = min(self$min_dt, dt)
       
       ## Calculate current state of human infectivity and immunity
       # If a human is due to recover, wipe the infection
