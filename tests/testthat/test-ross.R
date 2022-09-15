@@ -1,10 +1,11 @@
-test_that("replicate stochastic SEIR behaviour", {
+test_that("replicate stochastic Ross-Macdonald behaviour", {
+  skip("Test not complete")
   set.seed(0)
   # Use Ross Macdonald assumptions
   
   H = 10000
-  M = 1000000
-  X = round(H/1000)
+  M = 10
+  X = round(H/100)
   houses = tibble(X = 0, Y = 0)
   people = tibble(
     ID = 1:H,
