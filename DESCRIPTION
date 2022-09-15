@@ -15,13 +15,13 @@ Imports:
     forcats,
     ggnewscale,
     ggplot2,
-    magrittr,
     lubridate,
     patchwork,
     purrr,
     sf,
     raster,
-    tidyr
+    tidyr,
+    magrittr
 RoxygenNote: 7.2.1
 Suggests: 
     knitr,

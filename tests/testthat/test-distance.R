@@ -1,8 +1,8 @@
 test_that("a person nearby can be infected but a person far away cannot be.", {
   set.seed(0)
   
-  # Contrived setup where one susceptible person is near and one is very far
-  houses = tibble(X = c(0.4, 0.6, 99.5), Y = 0.5)
+  # Contrived setup where one susceptible person is near and one is absurdly far
+  houses = tibble(X = c(0.4, 0.6, 1e9-0.5), Y = 0.5)
   people = tibble(
     ID = 1:3,
     location_ix = list(1, 2, 3),
@@ -12,11 +12,11 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
   
   # Construct extremely infectious mosquito environment
   mosquito_raster = raster(
-    vals = 99999,
+    vals = 1000,
     ncols = 1,
     nrows = 1,
     xmn = 0,
-    xmx = 100,
+    xmx = 1e5,
     ymn = 0,
     ymx = 1)
   
@@ -24,7 +24,7 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
                        locations = houses,
                        mosquito_raster = mosquito_raster,
                        duration_human_infectivity = 60,
-                       bite_rate = 99999,
+                       bite_rate = 1,
                        mosquito_death_rate = 0.25)
   
   # Advance time
@@ -33,7 +33,7 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
   # Only person #2 has been infected
   with(sim$history_infections,
        expect_equal(
-         source[ID == 2] == "Transmission" & all(ID <= 2),
+         source[2] == "Transmission" & all(ID <= 2),
          TRUE)
   )
 })

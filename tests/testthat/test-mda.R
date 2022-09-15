@@ -20,15 +20,14 @@ test_that("iff relapse is disabled <=> MDA will stop transmission", {
     ymn = -1,
     ymx = 1)
   
-  # Set a custom immunity profile
-  complete_waning = function(dt) {
+  # Set a custom immunity profile with complete waning
+  Simulation$set("public", "human_immunity", function(humans, t) {
     immunity = approx(c(0, 10),
                       c(1, 1),
-                      dt,
+                      t - humans$t_infection,
                       yleft = 0, yright = 0)$y
     replace_na(immunity, 0)
-  }
-  Simulation$set("public", "human_immunity", complete_waning, overwrite = TRUE)
+  }, overwrite = TRUE)
   
   # Create two simulations
   sim_norelapse = Simulation$new(humans = people,

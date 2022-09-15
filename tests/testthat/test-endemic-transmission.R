@@ -20,15 +20,14 @@ test_that("under reasonable circumstances transmission occurs indefinitely", {
     ymn = -1,
     ymx = 1)
   
-  # Set a custom immunity profile
-  complete_waning = function(dt) {
+  # Set a custom immunity profile with complete gradual waning
+  Simulation$set("public", "human_immunity", function(humans, t) {
     immunity = approx(c(0, 60, 120),
                       c(1, 1, 0),
-                      dt,
+                      t - humans$t_infection,
                       yleft = 0, yright = 1)$y
     replace_na(immunity, 0)
-  }
-  Simulation$set("public", "human_immunity", complete_waning, overwrite = TRUE)
+  }, overwrite = TRUE)
   
   sim_base = Simulation$new(humans = people,
                             locations = houses,

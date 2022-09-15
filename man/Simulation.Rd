@@ -19,8 +19,29 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{max_mosquito_flight_range}}{Constrain mosquito diffusion distance in km}
 
-\item{\code{bite_rate}}{Bites per mosquito per density
+\item{\code{bite_rate}}{Bites per mosquito per density}
+
+\item{\code{mosquito_death_rate}}{Proportion of mosquitoes that die per day, simulated continuously}
+
+\item{\code{sporozoite_infection_rate}}{Proportion of infectious mosquito bites that can result in infection}
+
+\item{\code{p_relapse}}{Probability of an infection scheduling a relapse
 Initialize a simulation instance}
+
+\item{\code{humans_collase}}{Representat humans with only one set of coordinates}
+}
+\if{html}{\out{</div>}}
+}
+\section{Active bindings}{
+\if{html}{\out{<div class="r6-active-bindings">}}
+\describe{
+\item{\code{humans_collase}}{Representat humans with only one set of coordinates}
+
+\item{\code{humans_expand}}{Represent humans at all of their coordinates
+Representation of humans with only one set of coordinates
+
+Just places people at their highest proportion location
+Represent humans at all of their coordinates}
 }
 \if{html}{\out{</div>}}
 }
@@ -190,13 +211,12 @@ diffusion solution.}
 
 \item{\code{dy}}{Distance traveled vertically}
 
-\item{\code{dt}}{Time since origin in days}
+\item{\code{dt}}{Time since origin in days
+Lifecycle stages for P. vivax in humans after inoculation
+
+Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell}
 }
 \if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Relative mosquito density
-Lifecycle stages for P. vivax in humans after inoculation
 }
 }
 \if{html}{\out{<hr>}}
@@ -210,17 +230,14 @@ Lifecycle stages for P. vivax in humans after inoculation
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{dt}}{Time since inoculation in days}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-vector of probability of infecting mosquito with gametocytes in the grid cell
+\item{\code{dt}}{Time since inoculation in days
 Human immunity profile over time
 
 Full immunity then decays to 50% 
 scales # bites not # susceptible people. E.g. no one retains complete immunity
-after decay, everyone retains partial protection
+after decay, everyone retains partial protection}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -238,7 +255,7 @@ after decay, everyone retains partial protection
 Human relapse distribution
 
 Schedule a relapse infection for number of days after the primary infection.
-NA value is no relapse.
+Returns `Inf` value if no relapse.
 shape = (mean / sd)^2
 rate =  mean / sd^2}
 }
@@ -259,12 +276,6 @@ rate =  mean / sd^2}
 \item{\code{n}}{Number of people to schedule relapses for}
 }
 \if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Time until scheduled relapse, `Inf` if no relapse
-Representation of humans with only one set of coordinates
-
-Just places people at their highest proportion location
 }
 }
 \if{html}{\out{<hr>}}

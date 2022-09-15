@@ -12,17 +12,22 @@ Simulation = R6Class(
   #' @field duration_human_infectivity Constrain infectious period
   #' @field max_mosquito_flight_range Constrain mosquito diffusion distance in km
   #' @field bite_rate Bites per mosquito per density
+  #' @field mosquito_death_rate Proportion of mosquitoes that die per day, simulated continuously
+  #' @field sporozoite_infection_rate Proportion of infectious mosquito bites that can result in infection
+  #' @field p_relapse Probability of an infection scheduling a relapse
+  #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
   public = list(
     # Constants
     t = 0,
     mosquito_raster = NULL,
-    max_mosquito_lifespan = 0,
+    max_mosquito_lifespan = 0, # calculated on initialisation
     duration_human_infectivity = NULL,
     max_mosquito_flight_range = NULL,
     bite_rate = NULL,
     mosquito_death_rate = NULL,
     sporozoite_infection_rate = 0.75,
     p_relapse = NULL,
+    mean_recovery = NULL,
     
     # States
     humans = NULL,
@@ -30,11 +35,13 @@ Simulation = R6Class(
     vis_raster = NULL,
     mosquito_infections = tibble::tibble(X = numeric(),
                                          Y = numeric(),
-                                         t_inoculation = numeric()),
+                                         t_inoculation = numeric(),
+                                         infectious_count = numeric()),
     humans_infections = tibble::tibble(),
     
     # Outbreak history
     history_infections = NULL,
+    history_states = NULL,
     
     #' Initialize a simulation instance
     #' 
@@ -49,7 +56,8 @@ Simulation = R6Class(
                           duration_human_infectivity, # days
                           mosquito_death_rate, # per day
                           bite_rate,
-                          p_relapse = 0) { # proportion of infections that relapse including relapses themselves
+                          p_relapse = 0,
+                          mean_recovery = 14) { # proportion of infections that relapse including relapses themselves
       
       # Raster for fine visualisation of continuous fields
       bounds = extent(mosquito_raster)
@@ -59,9 +67,14 @@ Simulation = R6Class(
       
       # Parameters
       self$humans = humans
+      # Add columns that allow relapses and recoveries to be scheduled
       if (!"t_relapse" %in% names(self$humans)) {
         self$humans$t_relapse = Inf
       }
+      if (!"t_recovery" %in% names(self$humans)) {
+        self$humans$t_recovery = Inf
+      }
+      
       self$locations = tibble::tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
       self$mosquito_infections = tibble::tibble(X = numeric(), Y = numeric(), infected_count = integer(), t_inoculation = numeric())
       self$set_mosquito_raster(mosquito_raster)
@@ -69,8 +82,9 @@ Simulation = R6Class(
       self$bite_rate = bite_rate
       self$mosquito_death_rate = mosquito_death_rate
       self$p_relapse = p_relapse
+      self$mean_recovery = mean_recovery
       
-      # Calculate reasonable mosquito bounds
+      # Calculate reasonable bounds
       # capture the vast majority of the mosquito lifespan
       while (self$mosquito_survival(self$max_mosquito_lifespan) > 0.01) {
         self$max_mosquito_lifespan = self$max_mosquito_lifespan + 1
@@ -79,8 +93,12 @@ Simulation = R6Class(
       self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(self$mosquito_travel * self$max_mosquito_lifespan))
       
       # Initialise history
-      self$history_infections = cbind(self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
-                                      source = "Seed")
+      self$history_infections = as_tibble(cbind(
+        self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
+        source = "Seed"))
+      self$history_states = tibble(
+        t = self$t,
+        infected = sum(!is.na(self$humans$t_infection)))
       
       invisible(self)
     },
@@ -97,9 +115,14 @@ Simulation = R6Class(
     iterate = function(dt, debug=FALSE) {
       self$t = self$t + dt
       
-      # Calculate current state of human infectivity and immunity
-      self$humans$p_blood_gametocyte = self$human_infectivity(self$t - self$humans$t_infection)
-      self$humans$immunity = self$human_immunity(self$t - self$humans$t_infection)
+      ## Calculate current state of human infectivity and immunity
+      # If a human is due to recover, wipe the infection
+      recover_IDs = which(self$humans$t_recovery <= self$t)
+      self$humans$t_infection[recover_IDs] = NA # wipe infection
+      self$humans$t_recovery[recover_IDs] = Inf # unschedule recovery
+      # Otherwise calculate their disease state
+      self$humans$p_blood_gametocyte = self$human_infectivity(self$humans, self$t)
+      self$humans$immunity = self$human_immunity(self$humans, self$t)
       
       # Sum total human gametocyte load per location
       self$locations$gametocyte_load = 0
@@ -113,12 +136,12 @@ Simulation = R6Class(
         })
       }
       
-      # Calculate state of infected mosquitoes
-      # - Remove expired events
+      ## Calculate state of infected mosquitoes
+      # Remove expired events
       self$mosquito_infections = self$mosquito_infections[
         self$t - self$mosquito_infections$t_inoculation <= self$max_mosquito_lifespan,]
-      # - Calculate current infectivity of infected mosquito clouds integrated over space
-      #   i.e., number of live mosquitoes with mature sporozoites from this event
+      # Calculate current infectivity of infected mosquito clouds integrated over space
+      # i.e., number of live mosquitoes with mature sporozoites from this event
       self$mosquito_infections$infectious_count = self$mosquito_infections$infected_count *
         self$mosquito_survival(self$t - self$mosquito_infections$t_inoculation) *
         self$mosquito_sporogony(self$t - self$mosquito_infections$t_inoculation)
@@ -147,35 +170,40 @@ Simulation = R6Class(
       is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
       infect_IDs = susceptible$ID[infect_ix]
       
-      # Update human population
+      ## Update human population
       self$humans$t_infection[infect_IDs] = self$t
-      # clear and reschedule relapses
+      # clear and reschedule relapses and recoveries
       self$humans$t_relapse[infect_IDs] = self$t + self$human_schedule_relapse(length(infect_IDs))
+      self$humans$t_recovery[infect_IDs] = self$t + self$human_schedule_recovery(length(infect_IDs))
       
-      # Update mosquito population
+      ## Update mosquito population
       # Expose mosquitoes at locations that have both gametocytes and mosquitoes
       new_mosquito_infections = self$locations[self$locations$gametocyte_load > 0 &
                                                  self$locations$mosquito_density > 0,
                                                c("X", "Y", "gametocyte_load", "mosquito_density")]
-      # Infect mosquitoes at rate (assume no susc. depletion)
-      # Number of new infected mosquitoes generated by this human at this step
-      new_mosquito_infections$infected_count = new_mosquito_infections$gametocyte_load *
-        new_mosquito_infections$mosquito_density * # N.B. local density could potentially be recomputed
-        self$bite_rate *
-        dt
-      new_mosquito_infections$infectious_count = 0 # gets overwritten later anyway but prevent NAs
-      new_mosquito_infections$t_inoculation = self$t
-      new_mosquito_infections$gametocyte_load <- new_mosquito_infections$mosquito_density <- NULL
-      # Add new potential mosquitoes to list
-      self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
+      if (nrow(new_mosquito_infections) > 0) {
+        # Infect mosquitoes at rate (assume no susc. depletion)
+        new_mosquito_infections$infected_count = new_mosquito_infections$gametocyte_load *
+          new_mosquito_infections$mosquito_density * # N.B. local density could potentially be recomputed
+          self$bite_rate *
+          dt
+        new_mosquito_infections$infectious_count = 0 # gets overwritten later anyway but prevent NAs
+        new_mosquito_infections$t_inoculation = self$t
+        new_mosquito_infections$gametocyte_load <- new_mosquito_infections$mosquito_density <- NULL
+        # Add new potential mosquitoes to list
+        self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
+      }
       
       # Take observations
       self$history_infections = bind_rows(
         self$history_infections,
         tibble::tibble(ID = infect_IDs,
                        t_infection = self$t,
-                       source = as.character(ifelse(is_relapse, "Relapse", "Transmission")))
-      )
+                       source = as.character(ifelse(is_relapse, "Relapse", "Transmission"))))
+      self$history_states = bind_rows(
+        self$history_states,
+        tibble(t = self$t,
+               infected = sum(!is.na(self$humans$t_infection))))
       
       invisible(self)
     },
@@ -234,22 +262,21 @@ Simulation = R6Class(
     #' @param dx Distance traveled horizontally in km
     #' @param dy Distance traveled vertically
     #' @param dt Time since origin in days
-    #' 
-    #' @return Relative mosquito density
     mosquito_migration = function(dx, dy, dt) {
       exp(dnorm(dx, sd=sqrt(self$mosquito_travel * dt), log=T) + 
             dnorm(dy, sd=sqrt(self$mosquito_travel * dt), log=T))
     },
     
     #' Lifecycle stages for P. vivax in humans after inoculation
-    #'
-    #' @param dt Time since inoculation in days
     #' 
-    #' @return vector of probability of infecting mosquito with gametocytes in the grid cell
-    human_infectivity = function(dt) {
+    #' Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell
+    #'
+    #' @param humans Dataframe of humans with a `t_infection` column
+    #' @param t Simulation time
+    human_infectivity = function(humans, t) {
       infectivity = approx(c(12, 17, 20, self$duration_human_infectivity),
                            c(0, 1, 1, 0),
-                           dt,
+                           t - humans$t_infection,
                            yleft = 0, yright = 0)$y
       replace_na(infectivity, 0)
     },
@@ -260,11 +287,12 @@ Simulation = R6Class(
     #' scales # bites not # susceptible people. E.g. no one retains complete immunity
     #' after decay, everyone retains partial protection
     #' 
-    #' @param dt Time since infection in days
-    human_immunity = function(dt) {
+    #' @param humans Dataframe of humans with a `t_infection` column
+    #' @param t Simulation time
+    human_immunity = function(humans, t) {
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
                         c(1, 1, 1),
-                        dt,
+                        t - humans$t_infection,
                         yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
     },
@@ -275,28 +303,36 @@ Simulation = R6Class(
     #' Human relapse distribution
     #' 
     #' Schedule a relapse infection for number of days after the primary infection.
-    #' NA value is no relapse.
+    #' Returns `Inf` value if no relapse.
     #' shape = (mean / sd)^2
     #' rate =  mean / sd^2
     #' 
     #' @param n Number of people to schedule relapses for
-    #' 
-    #' @return Time until scheduled relapse, `Inf` if no relapse
     human_schedule_relapse = function(n) {
       ifelse(runif(n) < self$p_relapse,
              14 + rgamma(n, self$human_relapse_shape, self$human_relapse_rate),
              Inf)
+    },
+    
+    #' Human recovery distribution
+    #' 
+    #' Schedule a recovery for number of days after the primary infection. Can
+    #' also be used to schedule the success of treatment.
+    #' Returns `Inf` value if no recovery
+    #' 
+    #' @param n Number of people to schedule relapses for
+    human_schedule_recovery = function(n) {
+      rexp(n, rate = 1 / self$mean_recovery)
     }
   ),
   
-  
+  #' @field humans_collase Represent humans with only one set of coordinates
+  #' @field humans_expand Represent humans at all of their coordinates
   active = list(
     
     #' Representation of humans with only one set of coordinates
     #' 
     #' Just places people at their highest proportion location
-    #' 
-    #' @return Tibble of humans
     humans_collapse = function() {
       self$humans %>%
         mutate(location_ix = unlist(map(location_ix, first)),
@@ -305,8 +341,6 @@ Simulation = R6Class(
     },
     
     #' Represent humans at all of their coordinates
-    #' 
-    #' @return Tibble of humans duplicated if at multiple locations
     humans_expand = function() {
       self$humans %>%
         unnest(cols=c(location_ix, location_proportions)) %>%
