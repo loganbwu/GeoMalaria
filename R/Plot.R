@@ -170,8 +170,8 @@ plot_human_infectivity = function(sim) {
   value <- name <- NULL
   
   tibble(dt = seq(0, 2*sim$duration_human_infectivity, length.out=1000),
-         gametocyte_load = sim$human_infectivity(dt),
-         immunity = sim$human_immunity(dt)) %>%
+         gametocyte_load = sim$human_infectivity(dt=dt),
+         immunity = sim$human_immunity(dt=dt)) %>%
     pivot_longer(cols = -dt) %>%
     ggplot(aes(x = dt, y = value, color = name)) +
     geom_line() +

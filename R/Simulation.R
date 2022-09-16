@@ -272,14 +272,21 @@ Simulation = R6Class(
     
     #' Lifecycle stages for P. vivax in humans after inoculation
     #' 
-    #' Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell
-    #'
+    #' Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell.
+    #' Specify either `humans` AND `t`, OR `dt`
+    #' 
     #' @param humans Dataframe of humans with a `t_infection` column
     #' @param t Simulation time
-    human_infectivity = function(humans, t) {
+    #' @param dt Time since infection
+    human_infectivity = function(humans=NULL, t=NULL, dt=NULL) {
+      stopifnot("Function needs (humans AND t) OR dt" = xor(!is.null(humans) & !is.null(t), !is.null(dt)))
+      if (is.null(dt)) {
+        dt = t - humans$t_infection
+      }
+      
       infectivity = approx(c(12, 17, 20, self$duration_human_infectivity),
                            c(0, 1, 1, 0),
-                           t - humans$t_infection,
+                           dt,
                            yleft = 0, yright = 0)$y
       replace_na(infectivity, 0)
     },
@@ -288,14 +295,22 @@ Simulation = R6Class(
     #' 
     #' Full immunity then decays to 50% 
     #' scales # bites not # susceptible people. E.g. no one retains complete immunity
-    #' after decay, everyone retains partial protection
+    #' after decay, everyone retains partial protection.
+    #' 
+    #' Specify either `humans` AND `t`, OR `dt`
     #' 
     #' @param humans Dataframe of humans with a `t_infection` column
     #' @param t Simulation time
-    human_immunity = function(humans, t) {
+    #' @param dt Time since infection
+    human_immunity = function(humans=NULL, t=NULL, dt=NULL) {
+      stopifnot("Function needs (humans AND t) OR dt" = xor(!is.null(humans) & !is.null(t), !is.null(dt)))
+      if (is.null(dt)) {
+        dt = t - humans$t_infection
+      }
+      
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
                         c(1, 1, 1),
-                        t - humans$t_infection,
+                        dt,
                         yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
     },
