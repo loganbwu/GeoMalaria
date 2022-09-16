@@ -31,7 +31,7 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
   for (i in 1:10) sim$iterate(5)
   
   # Only person #2 has been infected
-  with(sim$log$linelist,
+  with(sim$linelist,
        expect_equal(
          source[2] == "Transmission" & all(ID <= 2),
          TRUE)

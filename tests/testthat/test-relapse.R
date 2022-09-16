@@ -35,5 +35,5 @@ test_that("one person can relapse if scheduled manually and relapse if scheduled
   sim$iterate(1)
   
   # Person relapses after the initial period then has another relapse scheduled
-  expect_equal(sum(sim$log$linelist$source == "Relapse"), 2)
+  expect_equal(sum(sim$linelist$source == "Relapse"), 2)
 })

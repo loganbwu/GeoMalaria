@@ -70,7 +70,7 @@ test_that("iff relapse is disabled <=> MDA will stop transmission", {
   }
   
   # Confirm no infections occur after MDA
-  expect_equal(max(sim_norelapse$log$linelist$t_infection) <= 100, TRUE)
+  expect_equal(max(sim_norelapse$linelist$t_infection) <= 100, TRUE)
   # Relapse brings transmission back after MDA
-  expect_equal(max(sim_relapse$log$linelist$t_infection) > 100, TRUE)
+  expect_equal(max(sim_relapse$linelist$t_infection) > 100, TRUE)
 })

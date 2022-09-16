@@ -112,12 +112,12 @@ plot_epicurve = function(sim) {
   # Add visible bindings
   t_infection <- NULL
   
-  ymax = sim$linelist %>%
+  ymax = sim$log$linelist %>%
     filter(source != "Seed") %>%
     count(t_infection) %>%
     pull(n) %>%
     max()
-  sim$linelist %>%
+  sim$log$linelist %>%
     mutate(source = fct_inorder(source)) %>%
     ggplot(aes(x = t_infection, fill = source)) +
     geom_bar(width = 0.9 * sim$min_dt) +

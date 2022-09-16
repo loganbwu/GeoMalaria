@@ -31,7 +31,6 @@ Simulation = R6Class(
     sporozoite_infection_rate = 0.75,
     p_relapse = NULL,
     mean_recovery = NULL,
-    log = list(),
     
     # States
     humans = NULL,
@@ -43,10 +42,7 @@ Simulation = R6Class(
                                          count = numeric(),
                                          density = numeric()),
     humans_infections = tibble::tibble(),
-    
-    # Outbreak history
-    linelist = NULL,
-    history_states = NULL,
+    log = list(),
     
     #' Initialize a simulation instance
     #' 
@@ -363,7 +359,19 @@ Simulation = R6Class(
   
   #' @field humans_collase Represent humans with only one set of coordinates
   #' @field humans_expand Represent humans at all of their coordinates
+  #' @field linelist Safely access linelist if logged
+  #' @field compartment Safely access compartments if logged
   active = list(
+    
+    linelist = function() {
+      stopifnot("'linelist' not specified in `log_options`" = "linelist" %in% names(self$log))
+      self$log$linelist
+    },
+    
+    compartment = function() {
+      stopifnot("'compartment' not specified in `log_options`" = "compartment" %in% names(self$log))
+      self$log$compartment
+    },
     
     #' Representation of humans with only one set of coordinates
     #' 
