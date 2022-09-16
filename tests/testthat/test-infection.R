@@ -29,7 +29,7 @@ test_that("two people living in close proximity with lots of mosquitoes can be i
   for (i in 1:30) sim$iterate(1)
   
   # At least one new person has been infected
-  expect_equal(sum(sim$history_infections$t_infection > 0) > 0, TRUE)
+  expect_equal(sum(sim$log$linelist$t_infection > 0) > 0, TRUE)
   # At least one person's source is Transmission
-  expect_equal("Transmission" %in% sim$history_infections$source, TRUE)
+  expect_equal("Transmission" %in% sim$log$linelist$source, TRUE)
 })

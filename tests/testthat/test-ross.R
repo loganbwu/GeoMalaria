@@ -81,7 +81,7 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
   }
   plot(sim)
   
-  Reff = sim$history_infections %>%
+  Reff = sim$log$compartment %>%
     filter(source == "Transmission") %>%
     count(t_infection) %>%
     mutate(Reff = n / lag(n))

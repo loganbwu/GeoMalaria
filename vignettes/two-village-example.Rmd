@@ -70,7 +70,7 @@ villagesim = Simulation$new(humans = people,
                             duration_human_infectivity = 60,
                             bite_rate = 0.1,
                             mosquito_death_rate = 0.25,
-                            p_relapse = 0.1)
+                            p_relapse = 0.2)
 
 plot_mosquito_infectivity(villagesim)
 plot_human_infectivity(villagesim)

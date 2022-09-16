@@ -11,6 +11,8 @@ Agent-based simulation for P. vivax malaria in a spatial context
 \describe{
 \item{\code{t}}{Current simulation time in days}
 
+\item{\code{min_dt}}{Smallest time step used so far}
+
 \item{\code{mosquito_raster}}{Raster object of mosquito counts}
 
 \item{\code{max_mosquito_lifespan}}{Constrain mosquitoes to an absolute maximum lifespan}
@@ -25,17 +27,19 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{sporozoite_infection_rate}}{Proportion of infectious mosquito bites that can result in infection}
 
-\item{\code{p_relapse}}{Probability of an infection scheduling a relapse
+\item{\code{p_relapse}}{Probability of an infection scheduling a relapse}
+
+\item{\code{mean_recovery}}{Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
 Initialize a simulation instance}
 
-\item{\code{humans_collase}}{Representat humans with only one set of coordinates}
+\item{\code{humans_collase}}{Represent humans with only one set of coordinates}
 }
 \if{html}{\out{</div>}}
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{humans_collase}}{Representat humans with only one set of coordinates}
+\item{\code{humans_collase}}{Represent humans with only one set of coordinates}
 
 \item{\code{humans_expand}}{Represent humans at all of their coordinates
 Representation of humans with only one set of coordinates
@@ -58,6 +62,7 @@ Represent humans at all of their coordinates}
 \item \href{#method-Simulation-human_infectivity}{\code{Simulation$human_infectivity()}}
 \item \href{#method-Simulation-human_immunity}{\code{Simulation$human_immunity()}}
 \item \href{#method-Simulation-human_schedule_relapse}{\code{Simulation$human_schedule_relapse()}}
+\item \href{#method-Simulation-human_schedule_recovery}{\code{Simulation$human_schedule_recovery()}}
 \item \href{#method-Simulation-clone}{\code{Simulation$clone()}}
 }
 }
@@ -73,7 +78,8 @@ Represent humans at all of their coordinates}
   duration_human_infectivity,
   mosquito_death_rate,
   bite_rate,
-  p_relapse = 0
+  p_relapse = 0,
+  mean_recovery = 14
 )}\if{html}{\out{</div>}}
 }
 
@@ -214,7 +220,8 @@ diffusion solution.}
 \item{\code{dt}}{Time since origin in days
 Lifecycle stages for P. vivax in humans after inoculation
 
-Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell}
+Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell.
+Specify either `humans` AND `t`, OR `dt`}
 }
 \if{html}{\out{</div>}}
 }
@@ -224,18 +231,24 @@ Calculates a vector of probability of infecting mosquito with gametocytes in the
 \if{latex}{\out{\hypertarget{method-Simulation-human_infectivity}{}}}
 \subsection{Method \code{human_infectivity()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_infectivity(dt)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_infectivity(humans = NULL, t = NULL, dt = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{dt}}{Time since inoculation in days
+\item{\code{humans}}{Dataframe of humans with a `t_infection` column}
+
+\item{\code{t}}{Simulation time}
+
+\item{\code{dt}}{Time since infection
 Human immunity profile over time
 
 Full immunity then decays to 50% 
 scales # bites not # susceptible people. E.g. no one retains complete immunity
-after decay, everyone retains partial protection}
+after decay, everyone retains partial protection.
+
+Specify either `humans` AND `t`, OR `dt`}
 }
 \if{html}{\out{</div>}}
 }
@@ -245,13 +258,17 @@ after decay, everyone retains partial protection}
 \if{latex}{\out{\hypertarget{method-Simulation-human_immunity}{}}}
 \subsection{Method \code{human_immunity()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_immunity(dt)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_immunity(humans = NULL, t = NULL, dt = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{dt}}{Time since infection in days
+\item{\code{humans}}{Dataframe of humans with a `t_infection` column}
+
+\item{\code{t}}{Simulation time}
+
+\item{\code{dt}}{Time since infection
 Human relapse distribution
 
 Schedule a relapse infection for number of days after the primary infection.
@@ -268,6 +285,27 @@ rate =  mean / sd^2}
 \subsection{Method \code{human_schedule_relapse()}}{
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$human_schedule_relapse(n)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{n}}{Number of people to schedule relapses for
+Human recovery distribution
+
+Schedule a recovery for number of days after the primary infection. Can
+also be used to schedule the success of treatment.
+Returns `Inf` value if no recovery}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Simulation-human_schedule_recovery"></a>}}
+\if{latex}{\out{\hypertarget{method-Simulation-human_schedule_recovery}{}}}
+\subsection{Method \code{human_schedule_recovery()}}{
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_schedule_recovery(n)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

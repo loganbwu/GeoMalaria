@@ -7,3 +7,5 @@
 *.html
 *.knit.md
 inst/doc
+/doc/
+/Meta/

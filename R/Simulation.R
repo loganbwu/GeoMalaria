@@ -17,6 +17,7 @@ Simulation = R6Class(
   #' @field sporozoite_infection_rate Proportion of infectious mosquito bites that can result in infection
   #' @field p_relapse Probability of an infection scheduling a relapse
   #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
+  #' @field log Character vector of logging options. Options include "linelist", "compartment", and/or "detail"
   public = list(
     # Constants
     t = 0,
@@ -30,6 +31,7 @@ Simulation = R6Class(
     sporozoite_infection_rate = 0.75,
     p_relapse = NULL,
     mean_recovery = NULL,
+    log = list(),
     
     # States
     humans = NULL,
@@ -38,11 +40,12 @@ Simulation = R6Class(
     mosquito_infections = tibble::tibble(X = numeric(),
                                          Y = numeric(),
                                          t_inoculation = numeric(),
-                                         infectious_count = numeric()),
+                                         count = numeric(),
+                                         density = numeric()),
     humans_infections = tibble::tibble(),
     
     # Outbreak history
-    history_infections = NULL,
+    linelist = NULL,
     history_states = NULL,
     
     #' Initialize a simulation instance
@@ -52,14 +55,17 @@ Simulation = R6Class(
     #' @param duration_human_infectivity maximum infectious period of a human in days
     #' @param mosquito_death_rate proportion of mosquitoes that die per day
     #' @param bite_rate probability of each mosquito biting a human in a cell
+    #' @param p_relapse Proportion of infections that trigger relapses
+    #' @param log_options Logging options
     initialize = function(humans,
                           locations,
                           mosquito_raster,
-                          duration_human_infectivity, # days
-                          mosquito_death_rate, # per day
+                          duration_human_infectivity,
+                          mosquito_death_rate,
                           bite_rate,
                           p_relapse = 0,
-                          mean_recovery = 14) { # proportion of infections that relapse including relapses themselves
+                          mean_recovery = 14,
+                          log_options = c("linelist", "compartment")) {
       
       # Raster for fine visualisation of continuous fields
       bounds = extent(mosquito_raster)
@@ -96,13 +102,17 @@ Simulation = R6Class(
       # Capture 95% of the distance travelled at the max lifespan
       self$max_mosquito_flight_range = qnorm(0.975, sd=sqrt(self$mosquito_travel * self$max_mosquito_lifespan))
       
-      # Initialise history
-      self$history_infections = as_tibble(cbind(
-        self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
-        source = "Seed"))
-      self$history_states = tibble(
-        t = self$t,
-        infected = sum(!is.na(self$humans$t_infection)))
+      # Initialise log
+      if ("linelist" %in% log_options) {
+        self$log$linelist = as_tibble(cbind(
+          self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
+          source = "Seed"))
+      }
+      if ("compartment" %in% log_options) {
+        self$log$compartment = tibble(
+          t = self$t,
+          infected = sum(!is.na(self$humans$t_infection)))
+      }
       
       invisible(self)
     },
@@ -122,9 +132,9 @@ Simulation = R6Class(
       
       ## Calculate current state of human infectivity and immunity
       # If a human is due to recover, wipe the infection
-      recover_IDs = which(self$humans$t_recovery <= self$t)
-      self$humans$t_infection[recover_IDs] = NA # wipe infection
-      self$humans$t_recovery[recover_IDs] = Inf # unschedule recovery
+      recovery_IDs = which(self$humans$t_recovery <= self$t)
+      self$humans$t_infection[recovery_IDs] = NA # wipe infection
+      self$humans$t_recovery[recovery_IDs] = Inf # unschedule recovery
       # Otherwise calculate their disease state
       self$humans$p_blood_gametocyte = self$human_infectivity(self$humans, self$t)
       self$humans$immunity = self$human_immunity(self$humans, self$t)
@@ -147,7 +157,7 @@ Simulation = R6Class(
         self$t - self$mosquito_infections$t_inoculation <= self$max_mosquito_lifespan,]
       # Calculate current infectivity of infected mosquito clouds integrated over space
       # i.e., number of live mosquitoes with mature sporozoites from this event
-      self$mosquito_infections$infectious_count = self$mosquito_infections$infected_count *
+      self$mosquito_infections$density = self$mosquito_infections$count *
         self$mosquito_survival(self$t - self$mosquito_infections$t_inoculation) *
         self$mosquito_sporogony(self$t - self$mosquito_infections$t_inoculation)
       
@@ -187,28 +197,32 @@ Simulation = R6Class(
                                                  self$locations$mosquito_density > 0,
                                                c("X", "Y", "gametocyte_load", "mosquito_density")]
       if (nrow(new_mosquito_infections) > 0) {
-        # Infect mosquitoes at rate (assume no susc. depletion)
-        new_mosquito_infections$infected_count = new_mosquito_infections$gametocyte_load *
+        # Infect mosquitoes at rate (assume no depletion of the susceptible compartment)
+        new_mosquito_infections$count = new_mosquito_infections$gametocyte_load *
           new_mosquito_infections$mosquito_density * # N.B. local density could potentially be recomputed
           self$bite_rate *
           dt
-        new_mosquito_infections$infectious_count = 0 # gets overwritten later anyway but prevent NAs
+        new_mosquito_infections$density = 0 # gets overwritten later anyway but prevent NAs
         new_mosquito_infections$t_inoculation = self$t
         new_mosquito_infections$gametocyte_load <- new_mosquito_infections$mosquito_density <- NULL
         # Add new potential mosquitoes to list
         self$mosquito_infections = bind_rows(self$mosquito_infections, new_mosquito_infections)
       }
       
-      # Take observations
-      self$history_infections = bind_rows(
-        self$history_infections,
-        tibble::tibble(ID = infect_IDs,
-                       t_infection = self$t,
-                       source = as.character(ifelse(is_relapse, "Relapse", "Transmission"))))
-      self$history_states = bind_rows(
-        self$history_states,
-        tibble(t = self$t,
-               infected = sum(!is.na(self$humans$t_infection))))
+      # Log observations
+      if ("linelist" %in% names(self$log)) {
+        self$log$linelist = bind_rows(
+          self$log$linelist,
+          tibble::tibble(ID = infect_IDs,
+                         t_infection = self$t,
+                         source = as.character(ifelse(is_relapse, "Relapse", "Transmission"))))
+      }
+      if ("compartment" %in% names(self$log)) {
+        self$log$compartment = bind_rows(
+          self$log$compartment,
+          tibble(t = self$t,
+                 infected = sum(!is.na(self$humans$t_infection))))
+      }
       
       invisible(self)
     },
@@ -235,7 +249,7 @@ Simulation = R6Class(
       # Calculate total EIR=HBR*SIR from all mosquito infection events
       with(
         self$mosquito_infections,
-        sum(infectious_count *
+        sum(density *
               self$bite_rate *
               # Disperse load over total cloud area (TODO: check integral=1)
               self$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
@@ -342,7 +356,8 @@ Simulation = R6Class(
     #' 
     #' @param n Number of people to schedule relapses for
     human_schedule_recovery = function(n) {
-      rexp(n, rate = 1 / self$mean_recovery)
+      # rexp(n, rate = 1 / self$mean_recovery)
+      Inf
     }
   ),
   

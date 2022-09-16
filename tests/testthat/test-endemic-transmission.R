@@ -51,12 +51,12 @@ test_that("under reasonable circumstances transmission occurs indefinitely", {
   }
   
   # Confirm that the daily simulation had transmission in the last few month
-  transmission_last_month_1 = with(sim_1$history_infections,
+  transmission_last_month_1 = with(sim_1$log$linelist,
                                    length(t_infection[t_infection >= n_days-30 & source=="Transmission"]))
-  expect_gt(sum(sim_1$history_infections$t_infection), 0)
+  expect_gt(transmission_last_month_1, 0)
   
   # Confirm that the weekly simulation had transmission in the last few month
-  transmission_last_month_2 = with(sim_2$history_infections,
+  transmission_last_month_2 = with(sim_2$log$linelist,
                                    length(t_infection[t_infection >= n_days-30 & source=="Transmission"]))
-  expect_gt(sum(sim_1$history_infections$t_infection), 0)
+  expect_gt(transmission_last_month_2, 0)
 })

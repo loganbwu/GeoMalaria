@@ -6,7 +6,7 @@ print.Simulation = function(x, ...) {
   print(
     list(
       "t" = x$t,
-      "History" = x$history_infections
+      "History" = x$linelist
     )
   )
 }
@@ -73,7 +73,7 @@ plot_state = function(sim) {
   
   human_data = sim$humans_expand %>%
     mutate(Infection = factor(case_when(t_infection == sim$t ~ "New",
-                                 ID %in% sim$history_infections$ID ~ "Historical",
+                                 ID %in% sim$linelist$ID ~ "Historical",
                                  TRUE ~ "None"),
                               levels = c("None", "Historical", "New"))) %>%
     arrange(desc(location_proportions), Infection)
@@ -112,12 +112,12 @@ plot_epicurve = function(sim) {
   # Add visible bindings
   t_infection <- NULL
   
-  ymax = sim$history_infections %>%
+  ymax = sim$linelist %>%
     filter(source != "Seed") %>%
     count(t_infection) %>%
     pull(n) %>%
     max()
-  sim$history_infections %>%
+  sim$linelist %>%
     mutate(source = fct_inorder(source)) %>%
     ggplot(aes(x = t_infection, fill = source)) +
     geom_bar(width = 0.9 * sim$min_dt) +
@@ -194,6 +194,7 @@ plot_human_relapse = function(sim) {
   tibble(dt = sim$human_schedule_relapse(10000)) %>%
     ggplot(aes(x = dt)) +
     geom_density(fill = "steelblue", alpha = 0.6) +
+    scale_x_continuous(limits = c(0, NA)) +
     labs(title = "Relapse density",
          x = "Days since infection", y = "Probability")
 }
