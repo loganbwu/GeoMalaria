@@ -78,7 +78,6 @@ Simulation = R6Class(
       }
       
       self$locations = tibble::tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
-      self$mosquito_infections = tibble::tibble(X = numeric(), Y = numeric(), infected_count = integer(), t_inoculation = numeric())
       self$set_mosquito_raster(mosquito_raster)
       self$duration_human_infectivity = duration_human_infectivity
       self$bite_rate = bite_rate
