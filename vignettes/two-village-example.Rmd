@@ -99,3 +99,4 @@ for (t in seq_len(150))  {
 }
 
 plot(villagesim)
+```

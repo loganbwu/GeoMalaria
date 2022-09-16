@@ -20,14 +20,18 @@ plot_init = function(sim) {
   # Add visible bindings
   x <- y <- t_infection <- X <- Y <- State <- location_proportions <- NULL
   
+  # Assemble plotting data
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T) %>%
     rename(X = x, Y = y)
   human_data = sim$humans_expand %>%
-    mutate(State = case_when(t_infection == 0 ~ "Importation",
-                             TRUE ~ "Susceptible")) %>%
-    arrange(t_infection)
+    mutate(State = factor(case_when(t_infection == 0 ~ "Importation",
+                             TRUE ~ "Susceptible"),
+                          levels = c("Susceptible", "Importation"))) %>%
+    arrange(State)
+  
   ggplot(mapping = aes(x=X, y=Y)) +
     geom_raster(data = mosquito_data, aes(fill=layer)) +
+    geom_line(data = human_data, aes(color=State, group = ID), alpha=0.6) +
     geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
     coord_equal() +
     scale_size_area(max_size = 3) +
@@ -67,10 +71,12 @@ plot_state = function(sim) {
   # Add visible bindings
   x <- y <- X <- Y <- ento_inoculation_rate <- p_blood_gametocyte <- Infection <- NULL
   
-  humans = sim$humans_collapse %>%
-    mutate(Infection = case_when(t_infection == sim$t ~ "New",
+  human_data = sim$humans_expand %>%
+    mutate(Infection = factor(case_when(t_infection == sim$t ~ "New",
                                  ID %in% sim$history_infections$ID ~ "Historical",
-                                 TRUE ~ "None"))
+                                 TRUE ~ "None"),
+                              levels = c("None", "Historical", "New"))) %>%
+    arrange(desc(location_proportions), Infection)
   
   vis_grid = as.data.frame(sim$vis_raster, xy=T) %>%
     select(X = x, Y = y)
@@ -81,8 +87,10 @@ plot_state = function(sim) {
     scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
     labs(fill = "EIR") +
     new_scale("fill") +
-    geom_point(aes(fill=p_blood_gametocyte, color=Infection), data=humans, pch=21, size=2, stroke=1) +
+    geom_line(data = human_data, aes(color=Infection, group = ID), alpha=0.6) +
+    geom_point(data=human_data, aes(fill=p_blood_gametocyte, color=Infection, size=location_proportions), pch=21, stroke=1) +
     labs(fill = "Gametocyte\nprobability") +
+    scale_size_area(max_size = 2, guide = "none") +
     scale_fill_viridis_c(limits=c(0, 1)) +
     scale_color_manual(values=c("New"="tomato",
                                 "Historical"="grey",

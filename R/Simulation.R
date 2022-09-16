@@ -76,6 +76,9 @@ Simulation = R6Class(
       if (!"t_recovery" %in% names(self$humans)) {
         self$humans$t_recovery = Inf
       }
+      if (!"p_blood_gametocyte" %in% names(self$humans)) {
+        self$humans$p_blood_gametocyte = 0
+      }
       
       self$locations = tibble::tibble(locations, gametocyte_load = NA_real_, EIR = NA_real_)
       self$set_mosquito_raster(mosquito_raster)
