@@ -130,19 +130,25 @@ plot_epicurve = function(sim) {
     theme(panel.grid.minor = element_blank())
 }
 
-plot_anim = function(sim, file="animation.mkv") {
+plot_anim = function(sim, file=NULL) {
+  # human_data = sim$humans_expand
   
   anim = ggplot(sim$EIR, aes(x=X, y=Y, fill=ento_inoculation_rate)) +
     geom_raster() +
-    # geom_point(data=human_data, aes(fill=NULL)) +
+    # geom_point(data=human_data, aes(fill=NULL), color="white") +
     coord_equal() +
     scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
     labs(fill = "EIR") +
-    transition_states(t) +
-    labs(t = "Entomological inoculation rate",
+    transition_time(t) +
+    labs(title = "Entomological inoculation rate",
          subtitle = "t = {frame_time}")
-  # animate(anim, renderer = gifski_renderer("animation.gif"))
-  animate(anim, renderer = av_renderer(file))
+  
+  if (!is.null(file)) {
+    animate(anim, renderer = av_renderer(file))
+  }
+  else {
+    return(anim)
+  }
 }
 
 

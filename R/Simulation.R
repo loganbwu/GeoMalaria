@@ -394,7 +394,7 @@ Simulation = R6Class(
     },
     
     EIR = function() {
-      stopifnot("'EIR' not specified in `log_options`" = "compartment" %in% names(self$log))
+      stopifnot("'EIR' not specified in `log_options`" = "EIR" %in% names(self$log))
       self$log$EIR
     },
     

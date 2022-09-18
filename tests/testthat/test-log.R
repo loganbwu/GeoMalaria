@@ -28,7 +28,9 @@ test_that("logging works", {
                        log_options = c("linelist", "compartment", "EIR"))
   
   # Simulate transmission for a while
-  niter = 20
+  sim$iterate(10)
+  
+  niter = 5
   dt = 2.5
   days = 0
   for (i in 1:niter) {
@@ -50,13 +52,6 @@ test_that("logging works", {
   expect_equal(names(t_table), as.character(days)) # Entries for every time step
   expect_type(sim$EIR$ento_inoculation_rate, "double")
   
-  # Potentially split the actual animation test out
-  file <- withr::local_tempfile(
-    fileext = ".mkv"
-  )
-  plot_anim(sim, file)
-  expect_true(file.exists(file))
-  
   # Test a sim with no logging enabled
   sim_nolog = Simulation$new(humans = people,
                              locations = houses,
@@ -68,4 +63,13 @@ test_that("logging works", {
                              log_options = NULL)
   sim_nolog$iterate(1)
   expect_identical(sim_nolog$log, list())
+  
+  
+  # Potentially split the actual animation test out
+  skip_on_ci() # Don't run on Github Actions
+  file <- withr::local_tempfile(
+    fileext = ".mkv"
+  )
+  plot_anim(sim, file)
+  expect_true(file.exists(file))
 })
