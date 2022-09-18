@@ -17,7 +17,7 @@ Simulation = R6Class(
   #' @field sporozoite_infection_rate Proportion of infectious mosquito bites that can result in infection
   #' @field p_relapse Probability of an infection scheduling a relapse
   #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
-  #' @field log Character vector of logging options. Options include "linelist", "compartment", and/or "detail"
+  #' @field log Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
   public = list(
     # Constants
     t = 0,
@@ -31,6 +31,7 @@ Simulation = R6Class(
     sporozoite_infection_rate = 0.75,
     p_relapse = NULL,
     mean_recovery = NULL,
+    vis_grid = NULL,
     
     # States
     humans = NULL,
@@ -108,6 +109,15 @@ Simulation = R6Class(
         self$log$compartment = tibble(
           t = self$t,
           infected = sum(!is.na(self$humans$t_infection)))
+      }
+      if ("EIR" %in% log_options) {
+        self$vis_grid = as.data.frame(self$vis_raster, xy=T) %>%
+          select(X = x, Y = y)
+        self$log$EIR = tibble(
+          t = self$t,
+          self$vis_grid,
+          ento_inoculation_rate = apply(self$vis_grid, 1, self$calculate_EIR)
+        )
       }
       
       invisible(self)
@@ -218,6 +228,16 @@ Simulation = R6Class(
           self$log$compartment,
           tibble(t = self$t,
                  infected = sum(!is.na(self$humans$t_infection))))
+      }
+      if ("EIR" %in% names(self$log)) {
+        self$log$EIR = bind_rows(
+          self$log$EIR,
+          tibble(
+            t = self$t,
+            self$vis_grid,
+            ento_inoculation_rate = apply(self$vis_grid, 1, self$calculate_EIR)
+          )
+        )
       }
       
       invisible(self)
@@ -371,6 +391,11 @@ Simulation = R6Class(
     compartment = function() {
       stopifnot("'compartment' not specified in `log_options`" = "compartment" %in% names(self$log))
       self$log$compartment
+    },
+    
+    EIR = function() {
+      stopifnot("'EIR' not specified in `log_options`" = "compartment" %in% names(self$log))
+      self$log$EIR
     },
     
     #' Representation of humans with only one set of coordinates

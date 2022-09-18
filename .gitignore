@@ -6,6 +6,8 @@
 .DS_Store
 *.html
 *.knit.md
+*.gif
+*.mkv
 inst/doc
 /doc/
 /Meta/

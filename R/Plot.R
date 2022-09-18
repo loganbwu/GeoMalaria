@@ -88,7 +88,7 @@ plot_state = function(sim) {
     labs(fill = "EIR") +
     new_scale("fill") +
     geom_line(data = human_data, aes(color=Infection, group = ID), alpha=0.6) +
-    geom_point(data=human_data, aes(fill=p_blood_gametocyte, color=Infection, size=location_proportions), pch=21, stroke=1) +
+    geom_point(data=human_data, aes(fill=p_blood_gametocyte, color=Infection, size=location_proportions, stroke=location_proportions), pch=21) +
     labs(fill = "Gametocyte\nprobability") +
     scale_size_area(max_size = 2, guide = "none") +
     scale_fill_viridis_c(limits=c(0, 1)) +
@@ -128,6 +128,21 @@ plot_epicurve = function(sim) {
     scale_fill_brewer(palette = "Set2", na.value = "grey") +
     theme_minimal() +
     theme(panel.grid.minor = element_blank())
+}
+
+plot_anim = function(sim, file="animation.mkv") {
+  
+  anim = ggplot(sim$EIR, aes(x=X, y=Y, fill=ento_inoculation_rate)) +
+    geom_raster() +
+    # geom_point(data=human_data, aes(fill=NULL)) +
+    coord_equal() +
+    scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
+    labs(fill = "EIR") +
+    transition_states(t) +
+    labs(t = "Entomological inoculation rate",
+         subtitle = "t = {frame_time}")
+  # animate(anim, renderer = gifski_renderer("animation.gif"))
+  animate(anim, renderer = av_renderer(file))
 }
 
 

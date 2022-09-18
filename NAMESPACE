@@ -13,6 +13,7 @@ import(forcats)
 import(ambient)
 import(patchwork)
 import(ggnewscale)
+import(gganimate)
 
 importFrom(stats, "dt")
 importFrom(stats, "density")
