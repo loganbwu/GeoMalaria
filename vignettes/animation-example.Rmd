@@ -19,6 +19,9 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(GeoMalaria)
 library(dplyr)
+library(progress)
+library(ggplot2)
+library(gganimate)
 ```
 
 Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10% of people in village 2 also spend half their time in village 1.
@@ -78,14 +81,18 @@ sim = Simulation$new(humans = people,
 
 ```{r}
 # Begin outbreak
-for (t in seq_len(300))  {
-  sim$iterate(1)
+intervals = c(rep(5, 5), rep(1, 100))
+pb = progress_bar$new(total = length(intervals),
+                      format = "Simulating [:bar]:percent eta: :eta")
+for (i in seq_along(intervals))  {
+  pb$tick()
+  sim$iterate(intervals[i])
 }
 ```
 
 <!-- # Render animation -->
 
-# ```{r sampleani, fig.show='animate', aniopts="controls,loop"}
-# plot_anim(sim, "animation.mkv")
-# ```
+```{r sampleani, fig.show='animate', aniopts="controls,loop", eval=FALSE}
+plot_anim(sim, file="animation.mp4")
+```
 

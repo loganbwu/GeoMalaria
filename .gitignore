@@ -8,6 +8,7 @@
 *.knit.md
 *.gif
 *.mkv
+*.mp4
 inst/doc
 /doc/
 /Meta/

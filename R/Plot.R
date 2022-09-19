@@ -24,7 +24,7 @@ plot_init = function(sim) {
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T)
   human_data = sim$humans_expand %>%
     mutate(State = factor(case_when(t_infection == 0 ~ "Importation",
-                             TRUE ~ "Susceptible"),
+                                    TRUE ~ "Susceptible"),
                           levels = c("Susceptible", "Importation"))) %>%
     arrange(State)
   
@@ -56,45 +56,71 @@ plot_init = function(sim) {
 #' Plots map with epicurve
 #' 
 #' @param x Simulation object
+#' @param t Optional, plot simulation as it was at this time
 #' @param ... Additional arguments
-plot.Simulation = function(x, ...) {
-  p_state = plot_state(x)
-  p_epicurve = plot_epicurve(x)
+plot.Simulation = function(x, t=NULL, ...) {
+  p_state = plot_state(x, t, ...)
+  p_epicurve = plot_epicurve(x, t, ...)
   p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
 }
 
 #' Plot map of simulation
 #' 
 #' @param sim Simulation object
-plot_state = function(sim) {
+#' @param t Optional, plot simulation as it was at this time
+#' @param ... Unused
+plot_state = function(sim, t=NULL, ...) {
   # Add visible bindings
   ID <- x <- y <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
+  dot_args = list(...)
   
-  human_data = sim$humans_expand %>%
-    mutate(Infection = factor(case_when(t_infection == sim$t ~ "New",
-                                 ID %in% sim$linelist$ID ~ "Historical",
-                                 TRUE ~ "None"),
-                              levels = c("None", "Historical", "New"))) %>%
-    arrange(desc(location_proportions), Infection)
+  if (is.null(t)) {
+    t = sim$t
+  } else {
+    stopifnot("Can only plot a previous state if 'EIR' is added to `log_options`" = t == sim$t | "EIR" %in% names(sim$log))
+    stopifnot("Requested t exceeds simulated clock time" = t <= sim$t)
+  }
   
-  vis_grid = as.data.frame(sim$vis_raster, xy=T)[, c("x", "y")]
-  vis_grid$ento_inoculation_rate = apply(vis_grid, 1, sim$calculate_EIR)
+  linelist = sim$linelist %>%
+    filter(t_infection <= t) %>%
+    rev() %>%
+    group_by(ID) %>%
+    slice(1) %>%
+    ungroup() %>%
+    full_join(sim$humans_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
+  linelist$source[is.na(linelist$source)] = "None"
   
-  ggplot(vis_grid, aes(x=x, y=y)) +
+  if ("EIR" %in% names(sim$log)) {
+    # Use the closest (most recent) logged EIR to the requested time t
+    eir_grid = sim$EIR[sim$EIR$t == max(sim$EIR$t[sim$EIR$t <= t]),]
+  } else {
+    # Calculate EIR with current state
+    eir_grid$ento_inoculation_rate = apply(sim$vis_grid, 1, sim$calculate_EIR)
+  }
+  
+  # Use the given eir_max if provided in dot arguments, e.g. for an animation
+  if ("eir_max" %in% names(dot_args)) {
+    eir_max = dot_args$eir_max
+  } else {
+    eir_max = list(max = max(eir_grid$ento_inoculation_rate))
+  }
+  
+  ggplot(eir_grid, aes(x=x, y=y)) +
     geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
-    scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
+    scale_fill_viridis_c(option="inferno", limits=c(0, eir_max)) +
     labs(fill = "EIR") +
     new_scale("fill") +
-    geom_line(data = human_data, aes(color=Infection, group = ID), alpha=0.6) +
-    geom_point(data=human_data, aes(fill=p_blood_gametocyte, color=Infection, size=location_proportions, stroke=location_proportions), pch=21) +
+    geom_line(data=linelist, aes(color=source, group = ID), alpha=0.6) +
+    geom_point(data=linelist, aes(color=source, size=location_proportions, stroke=location_proportions)) +
     labs(fill = "Gametocyte\nprobability") +
     scale_size_area(max_size = 2, guide = "none") +
     scale_fill_viridis_c(limits=c(0, 1)) +
-    scale_color_manual(values=c("New"="tomato",
-                                "Historical"="grey",
-                                "None"="steelblue")) +
+    scale_color_manual(values=c("Transmission"="tomato",
+                                "Seed"="grey",
+                                "None"="steelblue"),
+                       drop = FALSE) +
     coord_equal() +
-    labs(x = NULL, y = NULL) +
+    labs(x = NULL, y = NULL, color=NULL) +
     theme_minimal() +
     theme(legend.key.height = unit(10, "pt"),
           axis.text = element_blank(),
@@ -106,52 +132,85 @@ plot_state = function(sim) {
 #' Plot epidemic curve
 #' 
 #' @param sim Simulation object
-plot_epicurve = function(sim) {
+#' @param t Optional, plot epicurve as it was at this time
+#' @param ... Unused
+plot_epicurve = function(sim, t=NULL, ...) {
   # Add visible bindings
   t_infection <- NULL
+  dot_args = list(...)
   
-  ymax = sim$log$linelist %>%
-    filter(source != "Seed") %>%
-    count(t_infection) %>%
-    pull(n) %>%
-    max()
-  sim$log$linelist %>%
+  show_time = t
+  if (is.null(t)) {
+    t = sim$t
+    show_time = NA
+  }
+  
+  # Handle dot args
+  if ("t_range" %in% names(dot_args)) {
+    t_range = dot_args$t_range
+  } else {
+    t_range = list(min = 0, max = t)
+  }
+  
+  if ("y_max" %in% names(dot_args)) {
+    y_max = dot_args$y_max
+  } else {
+    y_max = with(sim$linelist[sim$linelist$t_infection <= t &
+                                  sim$linelist$source != "Seed",],
+                   unname(rev(sort(table(t_infection)))[1]))
+  }
+  
+  sources = levels(fct_inorder(sim$linelist$source))
+  colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
+  names(colors) = sources
+  
+  sim$linelist %>%
     mutate(source = fct_inorder(source)) %>%
+    filter(t_infection <= t) %>%
     ggplot(aes(x = t_infection, fill = source)) +
+    geom_vline(xintercept = show_time, color="grey") +
     geom_bar(width = 0.9 * sim$min_dt) +
-    coord_cartesian(xlim = c(0, sim$t), ylim = c(0, max(1, ymax))) +
+    coord_cartesian(xlim = c(t_range$min, t_range$max), ylim = c(0, max(1, y_max))) +
     labs(x = "Infection time",
          fill = NULL,
          y = NULL) +
-    scale_fill_brewer(palette = "Set2", na.value = "grey") +
+    scale_fill_manual(values = colors, na.value = "grey") +
     theme_minimal() +
     theme(panel.grid.minor = element_blank())
 }
 
-#' Animate the state of the epidemic over time
-#'
-#' @param sim Simulation object
+#' Animates a simulation
+#' 
+#' Plots map with epicurve. Pre-calculates ranges to ensure frames are consistent.
+#' 
+#' @param x Simulation object
+#' @param t Optional, vector of times to plot
 #' @param file Optional, write video to a destination
-plot_anim = function(sim, file=NULL) {
-  x <- y <- ento_inoculation_rate <- NULL
-  # human_data = sim$humans_expand
-  
-  anim = ggplot(sim$EIR, aes(x=x, y=y, fill=ento_inoculation_rate)) +
-    geom_raster() +
-    # geom_point(data=human_data, aes(fill=NULL), color="white") +
-    coord_equal() +
-    scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
-    labs(fill = "EIR") +
-    transition_time(t) +
-    labs(title = "Entomological inoculation rate",
-         subtitle = "t = {frame_time}")
-  
-  if (!is.null(file)) {
-    animate(anim, renderer = av_renderer(file))
+#' @param ... Additional arguments
+plot_anim = function(sim, t=NULL, file=NULL, ...) {
+  if (is.null(t)) {
+    t_range = list(min = 0,
+                   max = sim$t)
+    t = seq(t_range$min, t_range$max)
+  } else {
+    t_range = list(min = min(t),
+                   max = max(t))
   }
-  else {
-    return(anim)
+  
+  y_max = with(sim$linelist[sim$linelist$t_infection >= t_range$min &
+                                sim$linelist$t_infection <= t_range$max &
+                                sim$linelist$source != "Seed",],
+                 unname(rev(sort(table(t_infection)))[1]))
+  
+  eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
+                 max(0, max(ento_inoculation_rate)))
+  makeplot = function() {
+    frames = lapply(t, function(tt) {
+      p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
+      print(p)
+    })
   }
+  av::av_capture_graphics(makeplot(), file, 1280, 720, res = 144, framerate=15)
 }
 
 

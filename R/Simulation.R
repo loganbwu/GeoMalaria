@@ -391,17 +391,17 @@ Simulation = R6Class(
   active = list(
     
     linelist = function() {
-      stopifnot("'linelist' not specified in `log_options`" = "linelist" %in% names(self$log))
+      stopifnot("Tried to access linelist logs but 'linelist' not specified in `log_options`" = "linelist" %in% names(self$log))
       self$log$linelist
     },
     
     compartment = function() {
-      stopifnot("'compartment' not specified in `log_options`" = "compartment" %in% names(self$log))
+      stopifnot("Tried to access compartment size logs but 'compartment' not specified in `log_options`" = "compartment" %in% names(self$log))
       self$log$compartment
     },
     
     EIR = function() {
-      stopifnot("'EIR' not specified in `log_options`" = "EIR" %in% names(self$log))
+      stopifnot("Tried to access EIR logs but 'EIR' not specified in `log_options`" = "EIR" %in% names(self$log))
       self$log$EIR
     },
     

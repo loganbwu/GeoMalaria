@@ -13,7 +13,7 @@ import(forcats)
 import(ambient)
 import(patchwork)
 import(ggnewscale)
-import(gganimate)
+import(RColorBrewer)
 
 importFrom(stats, "dt")
 importFrom(stats, "density")
