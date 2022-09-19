@@ -32,7 +32,7 @@ test_that("logging works", {
   
   niter = 5
   dt = 2.5
-  days = 0
+  days = c(0, 10)
   for (i in 1:niter) {
     sim$iterate(dt)
     days = c(days, sim$t)

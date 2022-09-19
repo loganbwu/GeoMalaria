@@ -1,10 +1,10 @@
 ---
-title: "Two-Village Example"
+title: "Animation Example"
 output:
   rmarkdown::html_document:
     fig_width: 10
 vignette: >
-  %\VignetteIndexEntry{Two-Village Example}
+  %\VignetteIndexEntry{Animation Example}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---

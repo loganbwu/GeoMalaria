@@ -29,7 +29,9 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{p_relapse}}{Probability of an infection scheduling a relapse}
 
-\item{\code{mean_recovery}}{Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
+\item{\code{mean_recovery}}{Recovery parameter mean=1/rate. Could be changed for other distributions or functions.}
+
+\item{\code{log}}{Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
 Initialize a simulation instance}
 
 \item{\code{humans_collase}}{Represent humans with only one set of coordinates}
@@ -41,7 +43,11 @@ Initialize a simulation instance}
 \describe{
 \item{\code{humans_collase}}{Represent humans with only one set of coordinates}
 
-\item{\code{humans_expand}}{Represent humans at all of their coordinates
+\item{\code{humans_expand}}{Represent humans at all of their coordinates}
+
+\item{\code{linelist}}{Safely access linelist if logged}
+
+\item{\code{compartment}}{Safely access compartments if logged
 Representation of humans with only one set of coordinates
 
 Just places people at their highest proportion location
@@ -79,7 +85,8 @@ Represent humans at all of their coordinates}
   mosquito_death_rate,
   bite_rate,
   p_relapse = 0,
-  mean_recovery = 14
+  mean_recovery = 14,
+  log_options = c("linelist", "compartment")
 )}\if{html}{\out{</div>}}
 }
 
@@ -94,7 +101,11 @@ Represent humans at all of their coordinates}
 
 \item{\code{mosquito_death_rate}}{proportion of mosquitoes that die per day}
 
-\item{\code{bite_rate}}{probability of each mosquito biting a human in a cell
+\item{\code{bite_rate}}{probability of each mosquito biting a human in a cell}
+
+\item{\code{p_relapse}}{Proportion of infections that trigger relapses}
+
+\item{\code{log_options}}{Logging options
 Iterate simulation
 
 Advance simulation by `dt`. Calculates the current state of humans, infects

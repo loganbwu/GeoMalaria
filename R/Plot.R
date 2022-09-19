@@ -18,7 +18,7 @@ print.Simulation = function(x, ...) {
 #' @param sim Simulation object
 plot_init = function(sim) {
   # Add visible bindings
-  x <- y <- t_infection <- X <- Y <- State <- location_proportions <- NULL
+  ID <- x <- y <- t_infection <- X <- Y <- State <- location_proportions <- NULL
   
   # Assemble plotting data
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T) %>%
@@ -69,7 +69,7 @@ plot.Simulation = function(x, ...) {
 #' @param sim Simulation object
 plot_state = function(sim) {
   # Add visible bindings
-  x <- y <- X <- Y <- ento_inoculation_rate <- p_blood_gametocyte <- Infection <- NULL
+  ID <- x <- y <- X <- Y <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
   
   human_data = sim$humans_expand %>%
     mutate(Infection = factor(case_when(t_infection == sim$t ~ "New",
@@ -131,6 +131,7 @@ plot_epicurve = function(sim) {
 }
 
 plot_anim = function(sim, file=NULL) {
+  X <- Y <- ento_inoculation_rate <- NULL
   # human_data = sim$humans_expand
   
   anim = ggplot(sim$EIR, aes(x=X, y=Y, fill=ento_inoculation_rate)) +
