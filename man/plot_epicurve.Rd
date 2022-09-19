@@ -4,10 +4,14 @@
 \alias{plot_epicurve}
 \title{Plot epidemic curve}
 \usage{
-plot_epicurve(sim)
+plot_epicurve(sim, t = NULL, ...)
 }
 \arguments{
 \item{sim}{Simulation object}
+
+\item{t}{Optional, plot epicurve as it was at this time}
+
+\item{...}{Unused}
 }
 \description{
 Plot epidemic curve

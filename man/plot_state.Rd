@@ -4,10 +4,14 @@
 \alias{plot_state}
 \title{Plot map of simulation}
 \usage{
-plot_state(sim)
+plot_state(sim, t = NULL, ...)
 }
 \arguments{
 \item{sim}{Simulation object}
+
+\item{t}{Optional, plot simulation as it was at this time}
+
+\item{...}{Unused}
 }
 \description{
 Plot map of simulation

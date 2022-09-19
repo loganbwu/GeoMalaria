@@ -4,10 +4,12 @@
 \alias{plot.Simulation}
 \title{Plot current state of a simulation}
 \usage{
-\method{plot}{Simulation}(x, ...)
+\method{plot}{Simulation}(x, t = NULL, ...)
 }
 \arguments{
 \item{x}{Simulation object}
+
+\item{t}{Optional, plot simulation as it was at this time}
 
 \item{...}{Additional arguments}
 }

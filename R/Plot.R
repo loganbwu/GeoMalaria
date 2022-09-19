@@ -103,7 +103,7 @@ plot_state = function(sim, t=NULL, ...) {
   if ("eir_max" %in% names(dot_args)) {
     eir_max = dot_args$eir_max
   } else {
-    eir_max = list(max = max(eir_grid$ento_inoculation_rate))
+    eir_max = max(eir_grid$ento_inoculation_rate)
   }
   
   ggplot(eir_grid, aes(x=x, y=y)) +

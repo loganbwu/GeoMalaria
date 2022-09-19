@@ -4,6 +4,11 @@
 \alias{Simulation}
 \title{Malaria simulation class}
 \description{
+Malaria simulation class
+
+Malaria simulation class
+}
+\details{
 Agent-based simulation for P. vivax malaria in a spatial context
 }
 \section{Public fields}{
@@ -45,8 +50,7 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{human_relapse_rate}}{Rate constant of the human relapse distribution}
 
-\item{\code{log}}{Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
-Initialize a simulation instance}
+\item{\code{log}}{Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"}
 }
 \if{html}{\out{</div>}}
 }
@@ -92,6 +96,7 @@ Represent humans at all of their coordinates}
 \if{html}{\out{<a id="method-Simulation-new"></a>}}
 \if{latex}{\out{\hypertarget{method-Simulation-new}{}}}
 \subsection{Method \code{new()}}{
+Initialize a simulation instance
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$new(
   humans,
