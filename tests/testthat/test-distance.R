@@ -2,7 +2,7 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
   set.seed(0)
   
   # Contrived setup where one susceptible person is near and one is absurdly far
-  houses = tibble(X = c(0.4, 0.6, 1e9-0.5), Y = 0.5)
+  houses = tibble(x = c(0.4, 0.6, 1e9-0.5), y = 0.5)
   people = tibble(
     ID = 1:3,
     location_ix = list(1, 2, 3),

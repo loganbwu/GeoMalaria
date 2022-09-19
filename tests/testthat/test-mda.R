@@ -2,7 +2,7 @@ test_that("iff relapse is disabled <=> MDA will stop transmission", {
   set.seed(0)
   n = 100
   rads = seq(0, 2*pi, length.out=n)
-  houses = tibble(X = 0.4*cos(rads), Y = 0.4*sin(rads))
+  houses = tibble(x = 0.4*cos(rads), y = 0.4*sin(rads))
   people = tibble(
     ID = 1:n,
     location_ix = as.list(1:n),

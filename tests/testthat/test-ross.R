@@ -6,7 +6,7 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
   H = 10000
   M = 10
   X = round(H/100)
-  houses = tibble(X = 0, Y = 0)
+  houses = tibble(x = 0, y = 0)
   people = tibble(
     ID = 1:H,
     location_ix = as.list(rep(1, H)),

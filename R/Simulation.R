@@ -16,7 +16,14 @@ Simulation = R6Class(
   #' @field mosquito_death_rate Proportion of mosquitoes that die per day, simulated continuously
   #' @field sporozoite_infection_rate Proportion of infectious mosquito bites that can result in infection
   #' @field p_relapse Probability of an infection scheduling a relapse
-  #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions.
+  #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions
+  #' @field vis_raster Raster to visualise any spatial fields on
+  #' @field humans Data frame of humans
+  #' @field locations Data frame of human locations
+  #' @field mosquito_infections Data frame of current mosquito infection events
+  #' @field mosquito_travel Constant of mosquito travel in variance of location after one day
+  #' @field human_relapse_shape Shape constant of the human relapse distribution
+  #' @field human_relapse_rate Rate constant of the human relapse distribution
   #' @field log Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
   public = list(
     # Constants
@@ -31,20 +38,19 @@ Simulation = R6Class(
     sporozoite_infection_rate = 0.75,
     p_relapse = NULL,
     mean_recovery = NULL,
-    vis_grid = NULL,
+    vis_raster = NULL,
     
     # States
     humans = NULL,
     locations = NULL,
-    vis_raster = NULL,
-    mosquito_infections = tibble::tibble(X = numeric(),
-                                         Y = numeric(),
+    mosquito_infections = tibble::tibble(x = numeric(),
+                                         y = numeric(),
                                          t_inoculation = numeric(),
                                          count = numeric(),
                                          density = numeric()),
-    humans_infections = tibble::tibble(),
     log = list(),
     
+    #' @description
     #' Initialize a simulation instance
     #' 
     #' @param humans dataframe of residents in the area
@@ -53,6 +59,7 @@ Simulation = R6Class(
     #' @param mosquito_death_rate proportion of mosquitoes that die per day
     #' @param bite_rate probability of each mosquito biting a human in a cell
     #' @param p_relapse Proportion of infections that trigger relapses
+    #' @param mean_recovery Unused
     #' @param log_options Logging options
     initialize = function(humans,
                           locations,
@@ -111,8 +118,6 @@ Simulation = R6Class(
           infected = sum(!is.na(self$humans$t_infection)))
       }
       if ("EIR" %in% log_options) {
-        self$vis_grid = as.data.frame(self$vis_raster, xy=T) %>%
-          select(X = x, Y = y)
         self$log$EIR = tibble(
           t = self$t,
           self$vis_grid,
@@ -201,7 +206,7 @@ Simulation = R6Class(
       # Expose mosquitoes at locations that have both gametocytes and mosquitoes
       new_mosquito_infections = self$locations[self$locations$gametocyte_load > 0 &
                                                  self$locations$mosquito_density > 0,
-                                               c("X", "Y", "gametocyte_load", "mosquito_density")]
+                                               c("x", "y", "gametocyte_load", "mosquito_density")]
       if (nrow(new_mosquito_infections) > 0) {
         # Infect mosquitoes at rate (assume no depletion of the susceptible compartment)
         new_mosquito_infections$count = new_mosquito_infections$gametocyte_load *
@@ -249,16 +254,16 @@ Simulation = R6Class(
     #' 
     #' @param mosquito_raster Raster of mosquito densities
     set_mosquito_raster = function(mosquito_raster) {
-      self$locations$mosquito_density = my_extract(mosquito_raster, self$locations[c("X", "Y")])
+      self$locations$mosquito_density = my_extract(mosquito_raster, self$locations[c("x", "y")])
       self$mosquito_raster = mosquito_raster
       invisible(mosquito_raster)
     },
     
     #' Entomological inoculation rate
     #' 
-    #' Calculate EIR at a location with X and Y elements
+    #' Calculate EIR at a location with x and y elements
     #' 
-    #' @param loc List or dataframe with `X` and `Y` columns
+    #' @param loc List or dataframe with `x` and `y` columns
     #' 
     #' @return Numeric vector of EIR
     calculate_EIR = function(loc) {
@@ -268,7 +273,7 @@ Simulation = R6Class(
         sum(density *
               self$bite_rate *
               # Disperse load over total cloud area (TODO: check integral=1)
-              self$mosquito_migration(X-loc["X"], Y-loc["Y"], self$t-t_inoculation) *
+              self$mosquito_migration(x-loc["x"], y-loc["y"], self$t-t_inoculation) *
               self$sporozoite_infection_rate)
       )
     },
@@ -341,7 +346,7 @@ Simulation = R6Class(
       }
       
       immunity = approx(c(0, self$duration_human_infectivity, 2*self$duration_human_infectivity),
-                        c(1, 1, 1),
+                        c(1, 1, 0),
                         dt,
                         yleft = 0, yright = 1)$y
       replace_na(immunity, 0)
@@ -377,10 +382,12 @@ Simulation = R6Class(
     }
   ),
   
-  #' @field humans_collase Represent humans with only one set of coordinates
+  #' @field humans_collapse Represent humans with only one set of coordinates
   #' @field humans_expand Represent humans at all of their coordinates
   #' @field linelist Safely access linelist if logged
   #' @field compartment Safely access compartments if logged
+  #' @field EIR Entomological inoculation rate by coordinates over time
+  #' @field vis_grid Data frame version of `vis_raster`
   active = list(
     
     linelist = function() {
@@ -398,22 +405,26 @@ Simulation = R6Class(
       self$log$EIR
     },
     
+    vis_grid = function() {
+      as.data.frame(self$vis_raster, xy=T)[, c("x", "y")]
+    },
+    
     #' Representation of humans with only one set of coordinates
     #' 
     #' Just places people at their highest proportion location
     humans_collapse = function() {
       self$humans %>%
         mutate(location_ix = unlist(map(location_ix, first)),
-               X = self$locations$X[location_ix],
-               Y = self$locations$Y[location_ix])
+               x = self$locations$x[location_ix],
+               y = self$locations$y[location_ix])
     },
     
     #' Represent humans at all of their coordinates
     humans_expand = function() {
       self$humans %>%
         unnest(cols=c(location_ix, location_proportions)) %>%
-        mutate(X = self$locations$X[location_ix],
-               Y = self$locations$Y[location_ix])
+        mutate(x = self$locations$x[location_ix],
+               y = self$locations$y[location_ix])
     }
   )
 )

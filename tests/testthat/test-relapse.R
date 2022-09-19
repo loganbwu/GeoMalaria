@@ -1,6 +1,6 @@
 test_that("one person can relapse if scheduled manually and relapse if scheduled by an infection", {
   set.seed(0)
-  houses = tibble(X = 0.5, Y = 0.5)
+  houses = tibble(x = 0.5, y = 0.5)
   people = tibble(
     ID = 1,
     location_ix = list(1),

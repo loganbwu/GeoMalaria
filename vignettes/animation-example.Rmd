@@ -30,11 +30,11 @@ pop_2 = 100
 n_houses_1 = 30
 n_houses_2 = 15
 # Construct living locations
-houses_1 = tibble(X = rnorm(n_houses_1, 0, 15),
-                  Y = rnorm(n_houses_1, 0, 15)) %>%
+houses_1 = tibble(x = rnorm(n_houses_1, 0, 15),
+                  y = rnorm(n_houses_1, 0, 15)) %>%
   mutate(ID = row_number())
-houses_2 = tibble(X = rnorm(n_houses_2, 100, 10),
-                  Y = rnorm(n_houses_2, 0, 10)) %>%
+houses_2 = tibble(x = rnorm(n_houses_2, 100, 10),
+                  y = rnorm(n_houses_2, 0, 10)) %>%
   mutate(ID = row_number() + max(houses_1$ID))
 houses = bind_rows(houses_1, houses_2)
 loc_ix_1 = as.list(sample(houses_1$ID, pop_1, T))
@@ -58,10 +58,10 @@ people = bind_rows(people_1, people_2) %>%
          }))
 
 # Construct mosquito environment
-mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$X)),
-                                              xmax = ceiling(max(houses$X)),
-                                              ymin = floor(min(houses$Y)),
-                                              ymax = ceiling(max(houses$Y))))
+mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
+                                              xmax = ceiling(max(houses$x)),
+                                              ymin = floor(min(houses$y)),
+                                              ymax = ceiling(max(houses$y))))
 mosquito_raster[][mosquito_raster[] < 3000] = 0
 
 sim = Simulation$new(humans = people,

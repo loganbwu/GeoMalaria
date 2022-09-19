@@ -18,18 +18,17 @@ print.Simulation = function(x, ...) {
 #' @param sim Simulation object
 plot_init = function(sim) {
   # Add visible bindings
-  ID <- x <- y <- t_infection <- X <- Y <- State <- location_proportions <- NULL
+  ID <- x <- y <- t_infection <- State <- location_proportions <- NULL
   
   # Assemble plotting data
-  mosquito_data = as.data.frame(sim$mosquito_raster, xy=T) %>%
-    rename(X = x, Y = y)
+  mosquito_data = as.data.frame(sim$mosquito_raster, xy=T)
   human_data = sim$humans_expand %>%
     mutate(State = factor(case_when(t_infection == 0 ~ "Importation",
                              TRUE ~ "Susceptible"),
                           levels = c("Susceptible", "Importation"))) %>%
     arrange(State)
   
-  ggplot(mapping = aes(x=X, y=Y)) +
+  ggplot(mapping = aes(x=x, y=y)) +
     geom_raster(data = mosquito_data, aes(fill=layer)) +
     geom_line(data = human_data, aes(color=State, group = ID), alpha=0.6) +
     geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
@@ -69,7 +68,7 @@ plot.Simulation = function(x, ...) {
 #' @param sim Simulation object
 plot_state = function(sim) {
   # Add visible bindings
-  ID <- x <- y <- X <- Y <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
+  ID <- x <- y <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
   
   human_data = sim$humans_expand %>%
     mutate(Infection = factor(case_when(t_infection == sim$t ~ "New",
@@ -78,11 +77,10 @@ plot_state = function(sim) {
                               levels = c("None", "Historical", "New"))) %>%
     arrange(desc(location_proportions), Infection)
   
-  vis_grid = as.data.frame(sim$vis_raster, xy=T) %>%
-    select(X = x, Y = y)
+  vis_grid = as.data.frame(sim$vis_raster, xy=T)[, c("x", "y")]
   vis_grid$ento_inoculation_rate = apply(vis_grid, 1, sim$calculate_EIR)
   
-  ggplot(vis_grid, aes(x=X, y=Y)) +
+  ggplot(vis_grid, aes(x=x, y=y)) +
     geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
     scale_fill_viridis_c(option="inferno", limits=c(0, NA)) +
     labs(fill = "EIR") +
@@ -130,11 +128,15 @@ plot_epicurve = function(sim) {
     theme(panel.grid.minor = element_blank())
 }
 
+#' Animate the state of the epidemic over time
+#'
+#' @param sim Simulation object
+#' @param file Optional, write video to a destination
 plot_anim = function(sim, file=NULL) {
-  X <- Y <- ento_inoculation_rate <- NULL
+  x <- y <- ento_inoculation_rate <- NULL
   # human_data = sim$humans_expand
   
-  anim = ggplot(sim$EIR, aes(x=X, y=Y, fill=ento_inoculation_rate)) +
+  anim = ggplot(sim$EIR, aes(x=x, y=y, fill=ento_inoculation_rate)) +
     geom_raster() +
     # geom_point(data=human_data, aes(fill=NULL), color="white") +
     coord_equal() +
@@ -157,18 +159,15 @@ plot_anim = function(sim, file=NULL) {
 #' 
 #' @param sim Simulation object
 plot_mosquito_migration = function(sim) {
-  # Add visible bindings
-  dx <- NULL
-  
-  DX = seq(-sim$max_mosquito_flight_range,
+  dx = seq(-sim$max_mosquito_flight_range,
            sim$max_mosquito_flight_range,
            length.out = 100)
-  DT = seq(1, sim$max_mosquito_lifespan, length.out=7)
-  expand.grid(dx=DX, dt=DT) %>%
+  dt = seq(1, sim$max_mosquito_lifespan, length.out=7)
+  expand.grid(dx=dx, dt=dt) %>%
     mutate(density = sim$mosquito_migration(dx, 0, dt)) %>%
     ggplot(aes(x=dx, y=density, color=dt, group=dt)) +
     geom_line() +
-    scale_color_binned(breaks = DT) +
+    scale_color_binned(breaks = dt) +
     labs(title = "Distance travelled by mosquitoes",
          x = "Distance (1D shown; actual diffusion is 2D)", y = "Density",
          color = "Days since\nblood meal")

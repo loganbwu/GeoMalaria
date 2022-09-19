@@ -1,6 +1,6 @@
 test_that("two people living in close proximity with lots of mosquitoes can be infected by each other.", {
   set.seed(0)
-  houses = tibble(X = c(0.4, 0.6), Y = 0.5)
+  houses = tibble(x = c(0.4, 0.6), y = 0.5)
   people = tibble(
     ID = 1:2,
     location_ix = list(1,2),

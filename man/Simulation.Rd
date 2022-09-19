@@ -29,25 +29,41 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{p_relapse}}{Probability of an infection scheduling a relapse}
 
-\item{\code{mean_recovery}}{Recovery parameter mean=1/rate. Could be changed for other distributions or functions.}
+\item{\code{mean_recovery}}{Recovery parameter mean=1/rate. Could be changed for other distributions or functions}
+
+\item{\code{vis_raster}}{Raster to visualise any spatial fields on}
+
+\item{\code{humans}}{Data frame of humans}
+
+\item{\code{locations}}{Data frame of human locations}
+
+\item{\code{mosquito_infections}}{Data frame of current mosquito infection events}
+
+\item{\code{mosquito_travel}}{Constant of mosquito travel in variance of location after one day}
+
+\item{\code{human_relapse_shape}}{Shape constant of the human relapse distribution}
+
+\item{\code{human_relapse_rate}}{Rate constant of the human relapse distribution}
 
 \item{\code{log}}{Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
 Initialize a simulation instance}
-
-\item{\code{humans_collase}}{Represent humans with only one set of coordinates}
 }
 \if{html}{\out{</div>}}
 }
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{humans_collase}}{Represent humans with only one set of coordinates}
+\item{\code{humans_collapse}}{Represent humans with only one set of coordinates}
 
 \item{\code{humans_expand}}{Represent humans at all of their coordinates}
 
 \item{\code{linelist}}{Safely access linelist if logged}
 
-\item{\code{compartment}}{Safely access compartments if logged
+\item{\code{compartment}}{Safely access compartments if logged}
+
+\item{\code{EIR}}{Entomological inoculation rate by coordinates over time}
+
+\item{\code{vis_grid}}{Data frame version of `vis_raster`
 Representation of humans with only one set of coordinates
 
 Just places people at their highest proportion location
@@ -105,6 +121,8 @@ Represent humans at all of their coordinates}
 
 \item{\code{p_relapse}}{Proportion of infections that trigger relapses}
 
+\item{\code{mean_recovery}}{Unused}
+
 \item{\code{log_options}}{Logging options
 Iterate simulation
 
@@ -150,7 +168,7 @@ Updates simulation's raster and densities at each location}
 \item{\code{mosquito_raster}}{Raster of mosquito densities
 Entomological inoculation rate
 
-Calculate EIR at a location with X and Y elements}
+Calculate EIR at a location with x and y elements}
 }
 \if{html}{\out{</div>}}
 }
@@ -166,7 +184,7 @@ Calculate EIR at a location with X and Y elements}
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{loc}}{List or dataframe with `X` and `Y` columns}
+\item{\code{loc}}{List or dataframe with `x` and `y` columns}
 }
 \if{html}{\out{</div>}}
 }

@@ -2,8 +2,8 @@ test_that("logging works", {
   set.seed(0)
   n = 100
   rads = seq(0, 2*pi, length.out=n)
-  houses = tibble(X = rnorm(n, 0, 15),
-                  Y = rnorm(n, 0, 15))
+  houses = tibble(x = rnorm(n, 0, 15),
+                  y = rnorm(n, 0, 15))
   people = tibble(
     ID = 1:n,
     location_ix = as.list(1:n),
@@ -12,10 +12,10 @@ test_that("logging works", {
   )
   
   # Construct mosquito environment
-  mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$X)),
-                                                xmax = ceiling(max(houses$X)),
-                                                ymin = floor(min(houses$Y)),
-                                                ymax = ceiling(max(houses$Y))))
+  mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
+                                                xmax = ceiling(max(houses$x)),
+                                                ymin = floor(min(houses$y)),
+                                                ymax = ceiling(max(houses$y))))
   
   # Create two simulations
   sim = Simulation$new(humans = people,
