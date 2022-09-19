@@ -95,6 +95,7 @@ plot_state = function(sim, t=NULL, ...) {
     eir_grid = sim$EIR[sim$EIR$t == max(sim$EIR$t[sim$EIR$t <= t]),]
   } else {
     # Calculate EIR with current state
+    eir_grid = sim$vis_grid
     eir_grid$ento_inoculation_rate = apply(sim$vis_grid, 1, sim$calculate_EIR)
   }
   

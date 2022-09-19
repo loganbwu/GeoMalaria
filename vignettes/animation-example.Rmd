@@ -81,9 +81,9 @@ sim = Simulation$new(humans = people,
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(5, 5), rep(1, 100))
+intervals = c(rep(5, 5), rep(1, 200))
 pb = progress_bar$new(total = length(intervals),
-                      format = "Simulating [:bar]:percent eta: :eta")
+                      format = "Simulating [:bar] :current/:total eta: :eta")
 for (i in seq_along(intervals))  {
   pb$tick()
   sim$iterate(intervals[i])
