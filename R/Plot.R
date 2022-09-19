@@ -71,7 +71,7 @@ plot.Simulation = function(x, t=NULL, ...) {
 #' @param ... Unused
 plot_state = function(sim, t=NULL, ...) {
   # Add visible bindings
-  ID <- x <- y <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
+  ID <- x <- y <- t_infection <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
   dot_args = list(...)
   
   if (is.null(t)) {
@@ -106,8 +106,20 @@ plot_state = function(sim, t=NULL, ...) {
     eir_max = max(eir_grid$ento_inoculation_rate)
   }
   
+  # Create mosquito raster border
+  mosquito_border = sim$mosquito_raster
+  mosquito_border[] = ifelse(mosquito_border[] > 0, 1, NA)
+  mosquito_border = st_as_sf(raster::rasterToPolygons(mosquito_border, dissolve=T))
+  
+  
+  sources = levels(fct_inorder(sim$linelist$source))
+  colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
+  names(colors) = sources
+  colors = c(colors, "None"="grey")
+  
   ggplot(eir_grid, aes(x=x, y=y)) +
     geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
+    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), color="white", alpha=0, size=0.5) +
     scale_fill_viridis_c(option="inferno", limits=c(0, eir_max)) +
     labs(fill = "EIR") +
     new_scale("fill") +
@@ -116,11 +128,8 @@ plot_state = function(sim, t=NULL, ...) {
     labs(fill = "Gametocyte\nprobability") +
     scale_size_area(max_size = 2, guide = "none") +
     scale_fill_viridis_c(limits=c(0, 1)) +
-    scale_color_manual(values=c("Transmission"="tomato",
-                                "Seed"="grey",
-                                "None"="steelblue"),
-                       drop = FALSE) +
-    coord_equal() +
+    scale_color_manual(values = colors, na.value = "grey") +
+    coord_sf() +
     labs(x = NULL, y = NULL, color=NULL) +
     theme_minimal() +
     theme(legend.key.height = unit(10, "pt"),
@@ -140,11 +149,10 @@ plot_epicurve = function(sim, t=NULL, ...) {
   t_infection <- NULL
   dot_args = list(...)
   
-  show_time = t
   if (is.null(t)) {
     t = sim$t
-    show_time = NA
   }
+  show_time = t
   
   # Handle dot args
   if ("t_range" %in% names(dot_args)) {
@@ -184,7 +192,7 @@ plot_epicurve = function(sim, t=NULL, ...) {
 #' 
 #' Plots map with epicurve. Pre-calculates ranges to ensure frames are consistent.
 #' 
-#' @param x Simulation object
+#' @param sim Simulation object
 #' @param t Optional, vector of times to plot
 #' @param file Optional, write video to a destination
 #' @param ... Additional arguments

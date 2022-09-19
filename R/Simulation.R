@@ -54,6 +54,7 @@ Simulation = R6Class(
     #' Initialize a simulation instance
     #' 
     #' @param humans dataframe of residents in the area
+    #' @param locations dataframe of human locations
     #' @param mosquito_raster raster of the number of mosquitoes per cell
     #' @param duration_human_infectivity maximum infectious period of a human in days
     #' @param mosquito_death_rate proportion of mosquitoes that die per day

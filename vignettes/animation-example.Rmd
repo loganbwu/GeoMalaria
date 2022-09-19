@@ -21,17 +21,16 @@ library(GeoMalaria)
 library(dplyr)
 library(progress)
 library(ggplot2)
-library(gganimate)
 ```
 
 Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10% of people in village 2 also spend half their time in village 1.
 
 ```{r}
-set.seed(0)
+set.seed(1)
 pop_1 = 200
 pop_2 = 100
-n_houses_1 = 30
-n_houses_2 = 15
+n_houses_1 = 100 
+n_houses_2 = 50
 # Construct living locations
 houses_1 = tibble(x = rnorm(n_houses_1, 0, 15),
                   y = rnorm(n_houses_1, 0, 15)) %>%
@@ -65,7 +64,7 @@ mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
                                               xmax = ceiling(max(houses$x)),
                                               ymin = floor(min(houses$y)),
                                               ymax = ceiling(max(houses$y))))
-mosquito_raster[][mosquito_raster[] < 3000] = 0
+mosquito_raster[][mosquito_raster[] < 2000] = 0
 
 sim = Simulation$new(humans = people,
                             locations = houses,
@@ -75,13 +74,14 @@ sim = Simulation$new(humans = people,
                             mosquito_death_rate = 0.25,
                             p_relapse = 0.2,
                             log_options = c("linelist", "EIR"))
+plot_init(sim)
 ```
 
 # Run simulation
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(5, 5), rep(1, 200))
+intervals = c(rep(5, 5), rep(1, 400))
 pb = progress_bar$new(total = length(intervals),
                       format = "Simulating [:bar] :current/:total eta: :eta")
 for (i in seq_along(intervals))  {
@@ -90,7 +90,9 @@ for (i in seq_along(intervals))  {
 }
 ```
 
-<!-- # Render animation -->
+# Render animation
+
+Only do this when rendering the RMarkdown locally.
 
 ```{r sampleani, fig.show='animate', aniopts="controls,loop", eval=FALSE}
 plot_anim(sim, file="animation.mp4")

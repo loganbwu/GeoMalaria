@@ -26,6 +26,7 @@ Imports:
 RoxygenNote: 7.2.1
 Suggests: 
     knitr,
+    progress,
     rmarkdown,
     testthat (>= 3.0.0),
     withr

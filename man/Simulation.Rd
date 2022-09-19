@@ -116,6 +116,8 @@ Initialize a simulation instance
 \describe{
 \item{\code{humans}}{dataframe of residents in the area}
 
+\item{\code{locations}}{dataframe of human locations}
+
 \item{\code{mosquito_raster}}{raster of the number of mosquitoes per cell}
 
 \item{\code{duration_human_infectivity}}{maximum infectious period of a human in days}

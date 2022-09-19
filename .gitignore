@@ -9,6 +9,8 @@
 *.gif
 *.mkv
 *.mp4
+*.timestamp
 inst/doc
 /doc/
 /Meta/
+*_files/

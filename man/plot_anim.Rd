@@ -7,13 +7,13 @@
 plot_anim(sim, t = NULL, file = NULL, ...)
 }
 \arguments{
+\item{sim}{Simulation object}
+
 \item{t}{Optional, vector of times to plot}
 
 \item{file}{Optional, write video to a destination}
 
 \item{...}{Additional arguments}
-
-\item{x}{Simulation object}
 }
 \description{
 Plots map with epicurve. Pre-calculates ranges to ensure frames are consistent.
