@@ -1,20 +1,20 @@
-test_that("overall behaviour is not dependent on time step size", {
+test_that("repeated relapse behaviour is as expected", {
   set.seed(0)
   # Use Ross Macdonald assumptions
   
   n = 1000
-  n_infected = round(n/100)
   houses = tibble(x = 0, y = 0)
   people = tibble(
     ID = 1:n,
     location_ix = as.list(rep(1, n)),
     location_proportions = as.list(rep(1, n)),
-    t_infection = c(rep(0, n_infected), rep(NA, n-n_infected))
+    t_infection = NA,
+    t_relapse = 1
   )
   
-  # Construct mosquito environment
+  # Construct mosquito environment with NO transmission
   mosquito_raster = raster(
-    vals = 1000,
+    vals = 0,
     ncols = 1,
     nrows = 1,
     xmn = -1,
@@ -25,10 +25,10 @@ test_that("overall behaviour is not dependent on time step size", {
   sim = Simulation$new(humans = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
+                       duration_human_infectivity = 0.1,
                        bite_rate = 0.1,
-                       mosquito_death_rate = 0.25,
-                       p_relapse = 0,
+                       mosquito_death_rate = 0.5,
+                       p_relapse = 0.5,
                        mean_recovery = 14)
   
   # Simulate both for the same total time period

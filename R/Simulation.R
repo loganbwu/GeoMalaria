@@ -111,7 +111,7 @@ Simulation = R6Class(
       if ("linelist" %in% log_options) {
         self$log$linelist = as_tibble(cbind(
           self$humans[!is.na(self$humans$t_infection), c("ID", "t_infection")],
-          source = "Seed"))
+          source = rep("Seed", sum(!is.na(self$humans$t_infection)))))
       }
       if ("compartment" %in% log_options) {
         self$log$compartment = tibble(

@@ -30,7 +30,7 @@ plot_init = function(sim) {
 #' @param ... Additional arguments
 plot.Simulation = function(x, t=NULL, init=FALSE, ...) {
   if (init) {
-    plot_state(x, t, show_mosquito=TRUE, ...)
+    plot_state(x, t, background="mosquito", ...)
   } else {
     p_state = plot_state(x, t, ...)
     p_epicurve = plot_epicurve(x, t, ...) + guides(fill = "none")
@@ -42,10 +42,12 @@ plot.Simulation = function(x, t=NULL, init=FALSE, ...) {
 #' 
 #' @param sim Simulation object
 #' @param t Optional, plot simulation as it was at this time
+#' @param background Either 'EIR' or 'mosquito' 
 #' @param ... Unused
-plot_state = function(sim, t=NULL, show_mosquito=FALSE, ...) {
+plot_state = function(sim, t=NULL, background="EIR", ...) {
   # Add visible bindings
   ID <- x <- y <- t_infection <- location_proportions <- NULL
+  stopifnot("Invalid argument specified for plot background" = background %in% c("EIR", "mosquito"))
   dot_args = list(...)
   
   if (is.null(t)) {
@@ -66,7 +68,7 @@ plot_state = function(sim, t=NULL, show_mosquito=FALSE, ...) {
   linelist$source = fct_inorder(linelist$source)
   
   # Either use the mosquito raster or EIR calculation as the background raster
-  if (show_mosquito) {
+  if (background == "mosquito") {
     background = as.data.frame(sim$mosquito_raster, xy=T)
     background_max = max(background$layer)
     background_label = "Mos/km^2"
