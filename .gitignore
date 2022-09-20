@@ -9,6 +9,7 @@
 *.gif
 *.mkv
 *.mp4
+*.pdf
 *.timestamp
 inst/doc
 /doc/

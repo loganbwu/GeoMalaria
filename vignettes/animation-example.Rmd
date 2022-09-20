@@ -94,10 +94,10 @@ for (i in seq_along(intervals))  {
 
 # Render animation
 
-Only do this when rendering the RMarkdown locally.
+Only do this on my computer
 
 ```{r}
-if (interactive()) {
+if (Sys.info()["nodename"] == "mac3784") {
   tictoc::tic()
   plot_anim(sim, file="animation.mp4")
   tictoc::toc()
