@@ -21,6 +21,8 @@ library(GeoMalaria)
 library(dplyr)
 library(progress)
 library(ggplot2)
+library(future.apply)
+plan(multisession)
 ```
 
 Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10% of people in village 2 also spend half their time in village 1.
@@ -67,13 +69,13 @@ mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
 mosquito_raster[][mosquito_raster[] < 2000] = 0
 
 sim = Simulation$new(humans = people,
-                            locations = houses,
-                            mosquito_raster = mosquito_raster,
-                            duration_human_infectivity = 60,
-                            bite_rate = 0.1,
-                            mosquito_death_rate = 0.25,
-                            p_relapse = 0.2,
-                            log_options = c("linelist", "EIR"))
+                     locations = houses,
+                     mosquito_raster = mosquito_raster,
+                     duration_human_infectivity = 60,
+                     bite_rate = 0.1,
+                     mosquito_death_rate = 0.25,
+                     p_relapse = 0.2,
+                     log_options = c("linelist", "EIR"))
 plot_init(sim)
 ```
 
@@ -81,7 +83,7 @@ plot_init(sim)
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(5, 5), rep(1, 400))
+intervals = c(rep(1, 500))
 pb = progress_bar$new(total = length(intervals),
                       format = "Simulating [:bar] :current/:total eta: :eta")
 for (i in seq_along(intervals))  {
@@ -94,7 +96,30 @@ for (i in seq_along(intervals))  {
 
 Only do this when rendering the RMarkdown locally.
 
-```{r sampleani, fig.show='animate', aniopts="controls,loop", eval=FALSE}
-plot_anim(sim, file="animation.mp4")
+```{r}
+if (interactive()) {
+  tictoc::tic()
+  plot_anim(sim, file="animation.mp4")
+  tictoc::toc()
+}
+```
+
+```{r, eval=FALSE}
+# Experiment with parallelisation
+library(parallel)
+library(doParallel)
+library(foreach)
+my.cluster <- parallel::makeCluster(
+  1, 
+  type = "FORK"
+)
+registerDoParallel(cl = my.cluster)
+foreach(
+  i = 1:10, 
+  .combine = 'c'
+) %dopar% {
+    sqrt(i)
+}
+stopCluster(my.cluster)
 ```
 

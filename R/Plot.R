@@ -22,21 +22,29 @@ plot_init = function(sim) {
   
   # Assemble plotting data
   mosquito_data = as.data.frame(sim$mosquito_raster, xy=T)
-  human_data = sim$humans_expand %>%
-    mutate(State = factor(case_when(t_infection == 0 ~ "Importation",
-                                    TRUE ~ "Susceptible"),
-                          levels = c("Susceptible", "Importation"))) %>%
-    arrange(State)
+  
+  sources = levels(fct_inorder(sim$linelist$source))
+  colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
+  names(colors) = sources
+  colors = c(colors, "None"="grey")
+  
+  linelist = sim$linelist %>%
+    filter(t_infection <= 0) %>%
+    group_by(ID) %>%
+    slice(1) %>%
+    ungroup() %>%
+    full_join(sim$humans_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
+  linelist$source[is.na(linelist$source)] = "None"
+  linelist = linelist %>% arrange(source)
   
   ggplot(mapping = aes(x=x, y=y)) +
     geom_raster(data = mosquito_data, aes(fill=layer)) +
-    geom_line(data = human_data, aes(color=State, group = ID), alpha=0.6) +
-    geom_point(data = human_data, aes(color=State, size=location_proportions), alpha=0.6) +
+    geom_line(data = linelist, aes(color=source, group = ID), alpha=0.6) +
+    geom_point(data = linelist, aes(color=source, size=location_proportions), alpha=0.6) +
     coord_equal() +
-    scale_size_area(max_size = 3) +
+    scale_size_area(max_size = 3, breaks = 0.25*1:4) +
     scale_fill_viridis_c(option = "magma") +
-    scale_color_manual(values = c("Importation"="tomato",
-                                  "Susceptible"="grey")) +
+    scale_color_manual(values = colors[names(colors) %in% linelist$source], na.value = "grey") +
     labs(title = "Initial state",
          color = NULL,
          fill = "Mos/km^2",
@@ -89,6 +97,7 @@ plot_state = function(sim, t=NULL, ...) {
     ungroup() %>%
     full_join(sim$humans_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
   linelist$source[is.na(linelist$source)] = "None"
+  linelist$source = fct_inorder(linelist$source)
   
   if ("EIR" %in% names(sim$log)) {
     # Use the closest (most recent) logged EIR to the requested time t
@@ -119,12 +128,12 @@ plot_state = function(sim, t=NULL, ...) {
   
   ggplot(eir_grid, aes(x=x, y=y)) +
     geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
-    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), color="white", alpha=0, size=0.5) +
+    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL)) +
     scale_fill_viridis_c(option="inferno", limits=c(0, eir_max)) +
     labs(fill = "EIR") +
     new_scale("fill") +
     geom_line(data=linelist, aes(color=source, group = ID), alpha=0.6) +
-    geom_point(data=linelist, aes(color=source, size=location_proportions, stroke=location_proportions)) +
+    geom_point(data=linelist, aes(color=source, size=location_proportions), alpha=0.6) +
     labs(fill = "Gametocyte\nprobability") +
     scale_size_area(max_size = 2, guide = "none") +
     scale_fill_viridis_c(limits=c(0, 1)) +
@@ -165,8 +174,8 @@ plot_epicurve = function(sim, t=NULL, ...) {
     y_max = dot_args$y_max
   } else {
     y_max = with(sim$linelist[sim$linelist$t_infection <= t &
-                                  sim$linelist$source != "Seed",],
-                   unname(rev(sort(table(t_infection)))[1]))
+                                sim$linelist$source != "Seed",],
+                 unname(rev(sort(table(t_infection)))[1]))
   }
   
   sources = levels(fct_inorder(sim$linelist$source))
@@ -207,9 +216,9 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   }
   
   y_max = with(sim$linelist[sim$linelist$t_infection >= t_range$min &
-                                sim$linelist$t_infection <= t_range$max &
-                                sim$linelist$source != "Seed",],
-                 unname(rev(sort(table(t_infection)))[1]))
+                              sim$linelist$t_infection <= t_range$max &
+                              sim$linelist$source != "Seed",],
+               unname(rev(sort(table(t_infection)))[1]))
   
   eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
                  max(0, max(ento_inoculation_rate)))
@@ -219,7 +228,50 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
       print(p)
     })
   }
-  av::av_capture_graphics(makeplot(), file, 1280, 720, res = 144, framerate=15)
+  t = head(t, 10)
+  frame_files = file.path(tempdir(), paste0("frame_", t, ".png"))
+  
+  tryCatch({
+    # No parallelisation
+    for (i in seq_len(length(t))) {
+      print(paste("Frame", i, "of", length(t)))
+      plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
+      ggsave(frame_files[i], width=1920, height=1080, units="px", dpi=150)
+    }
+    
+    # plot_func = function(i) {
+    #   print(paste("Frame", i, "of", length(t)))
+    #   plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
+    #   ggsave(frame_files[i], width=1920, height=1080, units="px", dpi=150)
+    # }
+    # mclapply(seq_len(t), plot_func, mc.cores=8)
+    
+    # Foreach
+    # foreach(
+    #   i = seq_along(t), 
+    #   .combine = 'c'
+    # ) %dopar% {
+    #   print(paste("Frame", i, "of", length(t)))
+    #   plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
+    #   ggsave(frame_files[i], width=1920, height=1080, units="px")
+    # }
+    av::av_encode_video(frame_files, 'animation.mp4', framerate = 15)
+  },
+  finally = {
+    print("Removing temporary frames")
+    unlink(frame_files)
+    }
+  )
+  # frames = future_lapply(t, function(tt) {
+  #   filename = paste0("~/Documents/GeoMalaria/img/frame_", tt, ".png")
+  #   print(filename)
+  #   plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
+  #   ggsave(filename)
+  # })
+  # av::av_capture_graphics(future_lapply(t, function(tt) {
+  #   p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
+  #   print(p)
+  # }, future.seed=TRUE), file, 1280, 720, res = 144, framerate=15)
 }
 
 
