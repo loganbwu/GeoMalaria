@@ -97,7 +97,7 @@ for (i in seq_along(intervals))  {
 Only do this on my computer
 
 ```{r}
-if (Sys.info()["nodename"] == "mac3784") {
+if (interactive()) {
   tictoc::tic()
   plot_anim(sim, file="animation.mp4")
   tictoc::toc()

@@ -17,46 +17,7 @@ print.Simulation = function(x, ...) {
 #' 
 #' @param sim Simulation object
 plot_init = function(sim) {
-  # Add visible bindings
-  ID <- x <- y <- t_infection <- State <- location_proportions <- NULL
-  
-  # Assemble plotting data
-  mosquito_data = as.data.frame(sim$mosquito_raster, xy=T)
-  
-  sources = levels(fct_inorder(sim$linelist$source))
-  colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
-  names(colors) = sources
-  colors = c(colors, "None"="grey")
-  
-  linelist = sim$linelist %>%
-    filter(t_infection <= 0) %>%
-    group_by(ID) %>%
-    slice(1) %>%
-    ungroup() %>%
-    full_join(sim$humans_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
-  linelist$source[is.na(linelist$source)] = "None"
-  linelist = linelist %>% arrange(source)
-  
-  ggplot(mapping = aes(x=x, y=y)) +
-    geom_raster(data = mosquito_data, aes(fill=layer)) +
-    geom_line(data = linelist, aes(color=source, group = ID), alpha=0.6) +
-    geom_point(data = linelist, aes(color=source, size=location_proportions), alpha=0.6) +
-    coord_equal() +
-    scale_size_area(max_size = 3, breaks = 0.25*1:4) +
-    scale_fill_viridis_c(option = "magma") +
-    scale_color_manual(values = colors[names(colors) %in% linelist$source], na.value = "grey") +
-    labs(title = "Initial state",
-         color = NULL,
-         fill = "Mos/km^2",
-         size = "Proportion\ntime spent",
-         x = NULL,
-         y = NULL) +
-    theme_minimal() +
-    theme(legend.key.height = unit(10, "pt"),
-          axis.text = element_blank(),
-          axis.ticks = element_blank(),
-          panel.background = element_blank(),
-          panel.grid = element_blank())
+  plot.Simulation(sim, t=0, init=TRUE)
 }
 
 #' Plot current state of a simulation
@@ -65,11 +26,16 @@ plot_init = function(sim) {
 #' 
 #' @param x Simulation object
 #' @param t Optional, plot simulation as it was at this time
+#' @param init Logical, show initialisation state with mosquito raster
 #' @param ... Additional arguments
-plot.Simulation = function(x, t=NULL, ...) {
-  p_state = plot_state(x, t, ...)
-  p_epicurve = plot_epicurve(x, t, ...)
-  p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
+plot.Simulation = function(x, t=NULL, init=FALSE, ...) {
+  if (init) {
+    plot_state(x, t, show_mosquito=TRUE, ...)
+  } else {
+    p_state = plot_state(x, t, ...)
+    p_epicurve = plot_epicurve(x, t, ...) + guides(fill = "none")
+    p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
+  }
 }
 
 #' Plot map of simulation
@@ -77,9 +43,9 @@ plot.Simulation = function(x, t=NULL, ...) {
 #' @param sim Simulation object
 #' @param t Optional, plot simulation as it was at this time
 #' @param ... Unused
-plot_state = function(sim, t=NULL, ...) {
+plot_state = function(sim, t=NULL, show_mosquito=FALSE, ...) {
   # Add visible bindings
-  ID <- x <- y <- t_infection <- ento_inoculation_rate <- location_proportions <- p_blood_gametocyte <- Infection <- NULL
+  ID <- x <- y <- t_infection <- location_proportions <- NULL
   dot_args = list(...)
   
   if (is.null(t)) {
@@ -99,47 +65,55 @@ plot_state = function(sim, t=NULL, ...) {
   linelist$source[is.na(linelist$source)] = "None"
   linelist$source = fct_inorder(linelist$source)
   
-  if ("EIR" %in% names(sim$log)) {
-    # Use the closest (most recent) logged EIR to the requested time t
-    eir_grid = sim$EIR[sim$EIR$t == max(sim$EIR$t[sim$EIR$t <= t]),]
+  # Either use the mosquito raster or EIR calculation as the background raster
+  if (show_mosquito) {
+    background = as.data.frame(sim$mosquito_raster, xy=T)
+    background_max = max(background$layer)
+    background_label = "Mos/km^2"
   } else {
-    # Calculate EIR with current state
-    eir_grid = sim$vis_grid
-    eir_grid$ento_inoculation_rate = apply(sim$vis_grid, 1, sim$calculate_EIR)
+    
+    if ("EIR" %in% names(sim$log)) {
+      # Use the closest (most recent) logged EIR to the requested time t
+      background = sim$EIR[sim$EIR$t == max(sim$EIR$t[sim$EIR$t <= t]), c("x", "y", "ento_inoculation_rate")]
+    } else {
+      # Calculate EIR with current state
+      background = sim$vis_grid
+      background$intensity = apply(sim$vis_grid, 1, sim$calculate_EIR)
+    }
+    
+    # Use the given eir_max if provided in dot arguments, e.g. for an animation
+    if ("eir_max" %in% names(dot_args)) {
+      background_max = dot_args$eir_max
+    } else {
+      background_max = max(background$ento_inoculation_rate)
+    }
+    background_label = "EIR"
   }
-  
-  # Use the given eir_max if provided in dot arguments, e.g. for an animation
-  if ("eir_max" %in% names(dot_args)) {
-    eir_max = dot_args$eir_max
-  } else {
-    eir_max = max(eir_grid$ento_inoculation_rate)
-  }
+  # Rename raster value because it doesn't matter where it comes from
+  names(background)[3] = "intensity"
   
   # Create mosquito raster border
   mosquito_border = sim$mosquito_raster
   mosquito_border[] = ifelse(mosquito_border[] > 0, 1, NA)
   mosquito_border = st_as_sf(raster::rasterToPolygons(mosquito_border, dissolve=T))
   
-  
   sources = levels(fct_inorder(sim$linelist$source))
   colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
   names(colors) = sources
   colors = c(colors, "None"="grey")
   
-  ggplot(eir_grid, aes(x=x, y=y)) +
-    geom_raster(aes(fill=ento_inoculation_rate), interpolate=TRUE) +
-    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL)) +
-    scale_fill_viridis_c(option="inferno", limits=c(0, eir_max)) +
-    labs(fill = "EIR") +
-    new_scale("fill") +
+  ggplot(background, aes(x=x, y=y)) +
+    geom_raster(aes(fill=intensity), interpolate=TRUE) +
+    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), alpha=0) +
+    scale_fill_viridis_c(option="inferno", limits=c(0, background_max)) +
     geom_line(data=linelist, aes(color=source, group = ID), alpha=0.6) +
     geom_point(data=linelist, aes(color=source, size=location_proportions), alpha=0.6) +
-    labs(fill = "Gametocyte\nprobability") +
-    scale_size_area(max_size = 2, guide = "none") +
-    scale_fill_viridis_c(limits=c(0, 1)) +
+    # labs(fill = "Gametocyte\nprobability") +
+    scale_size_area(max_size = 2, breaks = 0.25*1:4) +
+    # scale_fill_viridis_c(limits=c(0, 1)) +
     scale_color_manual(values = colors, na.value = "grey") +
     coord_sf() +
-    labs(x = NULL, y = NULL, color=NULL) +
+    labs(x=NULL, y=NULL, color="Infection", fill=background_label, size="Proportion\ntime spent") +
     theme_minimal() +
     theme(legend.key.height = unit(10, "pt"),
           axis.text = element_blank(),
@@ -222,16 +196,17 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   
   eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
                  max(0, max(ento_inoculation_rate)))
-  makeplot = function() {
-    frames = lapply(t, function(tt) {
-      p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
-      print(p)
-    })
-  }
-  t = head(t, 10)
+  # makeplot = function() {
+  #   frames = lapply(t, function(tt) {
+  #     p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
+  #     print(p)
+  #   })
+  # }
+  # t = head(t, 10)
   frame_files = file.path(tempdir(), paste0("frame_", t, ".png"))
   
   tryCatch({
+    print("Rendering frames")
     # No parallelisation
     for (i in seq_len(length(t))) {
       print(paste("Frame", i, "of", length(t)))
@@ -260,7 +235,7 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   finally = {
     print("Removing temporary frames")
     unlink(frame_files)
-    }
+  }
   )
   # frames = future_lapply(t, function(tt) {
   #   filename = paste0("~/Documents/GeoMalaria/img/frame_", tt, ".png")
