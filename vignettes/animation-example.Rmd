@@ -83,7 +83,7 @@ plot_init(sim)
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(1, 500))
+intervals = c(rep(1, 999))
 pb = progress_bar$new(total = length(intervals),
                       format = "Simulating [:bar] :current/:total eta: :eta")
 for (i in seq_along(intervals))  {

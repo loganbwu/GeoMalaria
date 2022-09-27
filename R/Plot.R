@@ -77,17 +77,17 @@ plot_state = function(sim, t=NULL, background="EIR", ...) {
     if ("EIR" %in% names(sim$log)) {
       # Use the closest (most recent) logged EIR to the requested time t
       background = sim$EIR[sim$EIR$t == max(sim$EIR$t[sim$EIR$t <= t]), c("x", "y", "ento_inoculation_rate")]
+      background_max = max(background$ento_inoculation_rate)
     } else {
       # Calculate EIR with current state
       background = sim$vis_grid
-      background$intensity = apply(sim$vis_grid, 1, sim$calculate_EIR)
+      background$intensity = apply(background, 1, sim$calculate_EIR)
+      background_max = max(background$intensity)
     }
     
     # Use the given eir_max if provided in dot arguments, e.g. for an animation
     if ("eir_max" %in% names(dot_args)) {
       background_max = dot_args$eir_max
-    } else {
-      background_max = max(background$ento_inoculation_rate)
     }
     background_label = "EIR"
   }
@@ -103,16 +103,13 @@ plot_state = function(sim, t=NULL, background="EIR", ...) {
   colors = brewer.pal(max(3, length(sources)), "Set2")[seq_along(sources)]
   names(colors) = sources
   colors = c(colors, "None"="grey")
-  
   ggplot(background, aes(x=x, y=y)) +
     geom_raster(aes(fill=intensity), interpolate=TRUE) +
-    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), alpha=0) +
     scale_fill_viridis_c(option="inferno", limits=c(0, background_max)) +
+    geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), color="grey", fill="transparent") +
     geom_line(data=linelist, aes(color=source, group = ID), alpha=0.6) +
     geom_point(data=linelist, aes(color=source, size=location_proportions), alpha=0.6) +
-    # labs(fill = "Gametocyte\nprobability") +
     scale_size_area(max_size = 2, breaks = 0.25*1:4) +
-    # scale_fill_viridis_c(limits=c(0, 1)) +
     scale_color_manual(values = colors, na.value = "grey") +
     coord_sf() +
     labs(x=NULL, y=NULL, color="Infection", fill=background_label, size="Proportion\ntime spent") +

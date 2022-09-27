@@ -1,4 +1,4 @@
-test_that("repeated relapse behaviour is as expected", {
+test_that("distribution of relapse delays doesn't depend on which number relapse it is", {
   set.seed(0)
   # Use Ross Macdonald assumptions
   

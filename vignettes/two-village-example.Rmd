@@ -17,7 +17,7 @@ knitr::opts_chunk$set(
 ```
 
 ```{r setup}
-library(GeoMalaria)
+# library(GeoMalaria)
 library(dplyr)
 ```
 
@@ -98,5 +98,7 @@ for (t in seq_len(150))  {
   villagesim$iterate(1)
 }
 
-plot(villagesim)
+plot(villagesim) +
+  geom_vline(xintercept = 50, linetype="dashed") +
+  annotate("text", x=50, y=1, angle=90, hjust=0, vjust=-0.2, label="MDA")
 ```
