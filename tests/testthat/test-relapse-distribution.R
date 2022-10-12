@@ -46,17 +46,18 @@ test_that("distribution of relapse delays doesn't depend on which number relapse
   # ggplot(relapses, aes(x=t_infection)) +
   #   geom_density() +
   #   facet_wrap(vars(n))
-  # 
-  ggplot(relapses, aes(x=delay)) +
-    geom_density() +
-    facet_wrap(vars(ix))
+
+  # ggplot(relapses, aes(x=delay)) +
+  #   geom_density() +
+  #   facet_wrap(vars(ix))
   
   # Check the distribution of relapse delays
   distributions = relapses %>%
     group_by(ix) %>%
     summarise(mean_delay = mean(delay),
               sd = sd(delay),
-              n = n())
+              n = n()) %>%
+    filter(n > 1)
   means = with(
     distributions,
     list(mean_delay = sum(mean_delay * n) / sum(n),

@@ -10,6 +10,7 @@
 *.mkv
 *.mp4
 *.pdf
+*.png
 *.timestamp
 inst/doc
 /doc/

@@ -6,7 +6,9 @@ print.Simulation = function(x, ...) {
   print(
     list(
       "t" = x$t,
-      "History" = x$linelist
+      "linelist" = x$linelist,
+      "humans" = x$humans,
+      "attack_rate" = length(unique(x$linelist$ID)) / nrow(x$humans)
     )
   )
 }

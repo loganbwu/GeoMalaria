@@ -78,6 +78,11 @@ Simulation = R6Class(
                                xmn=bounds@xmin, xmx=bounds@xmax,
                                ymn=bounds@ymin, ymx=bounds@ymax)
       
+      # Verify that all locations have defined mosquito amounts
+      # stopifnot("Locations not covered by raster" = any(
+      #   is.na(my_extract(mosquito_raster, locations[c("x", "y")]))
+      # ))
+      
       # Parameters
       self$humans = humans
       # Add columns that allow relapses and recoveries to be scheduled
@@ -178,6 +183,7 @@ Simulation = R6Class(
       
       # Expose and infect humans who are not immune or are due to relapse
       susceptible = self$humans[self$humans$immunity < 1 | self$humans$t_relapse <= self$t,]
+      susceptible_EIR = numeric() # otherwise it'll be undefined
       if (nrow(susceptible) > 0) {
         susceptible_EIR = apply(
           susceptible,
@@ -188,14 +194,13 @@ Simulation = R6Class(
             sum(self$locations$EIR[ix] * human$location_proportions)
           }
         ) * (1 - susceptible$immunity)
-      } else {
-        susceptible_EIR = numeric() # otherwise it'll be undefined
       }
       # shortcut for P(x > 0), x ~Pois(EIR*dt) OR relapse
       infect_ix = runif(nrow(susceptible)) > exp(-susceptible_EIR * dt) |
         susceptible$t_relapse <= self$t
       is_relapse = (susceptible$t_relapse <= self$t)[infect_ix]
       infect_IDs = susceptible$ID[infect_ix]
+      if(any(is.na(infect_IDs))) print(susceptible_EIR)
       
       ## Update human population
       self$humans$t_infection[infect_IDs] = self$t
@@ -389,6 +394,7 @@ Simulation = R6Class(
   #' @field compartment Safely access compartments if logged
   #' @field EIR Entomological inoculation rate by coordinates over time
   #' @field vis_grid Data frame version of `vis_raster`
+  #' @field attack_rate Proportion of humans who have been infected at least once
   active = list(
     
     linelist = function() {
@@ -426,6 +432,10 @@ Simulation = R6Class(
         unnest(cols=c(location_ix, location_proportions)) %>%
         mutate(x = self$locations$x[location_ix],
                y = self$locations$y[location_ix])
+    },
+    
+    attack_rate = function() {
+      length(unique(self$linelist$ID)) / nrow(self$humans)
     }
   )
 )
