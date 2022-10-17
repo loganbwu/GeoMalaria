@@ -4,12 +4,14 @@
 \alias{plot_state}
 \title{Plot map of simulation}
 \usage{
-plot_state(sim, t = NULL, ...)
+plot_state(sim, t = NULL, background = "EIR", ...)
 }
 \arguments{
 \item{sim}{Simulation object}
 
 \item{t}{Optional, plot simulation as it was at this time}
+
+\item{background}{Either 'EIR' or 'mosquito'}
 
 \item{...}{Unused}
 }

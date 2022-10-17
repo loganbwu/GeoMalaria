@@ -17,6 +17,7 @@ Imports:
     ggplot2,
     lubridate,
     patchwork,
+    progress,
     purrr,
     sf,
     raster,
@@ -24,11 +25,13 @@ Imports:
     tidyr,
     magrittr
 RoxygenNote: 7.2.1
-Suggests: 
+Suggests:
+    av,
     knitr,
-    progress,
+    pbapply,
     rmarkdown,
     testthat (>= 3.0.0),
+    tictoc,
     withr
 Config/testthat/edition: 3
 VignetteBuilder: knitr

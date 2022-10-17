@@ -79,9 +79,9 @@ Simulation = R6Class(
                                ymn=bounds@ymin, ymx=bounds@ymax)
       
       # Verify that all locations have defined mosquito amounts
-      # stopifnot("Locations not covered by raster" = any(
-      #   is.na(my_extract(mosquito_raster, locations[c("x", "y")]))
-      # ))
+      stopifnot("Locations not covered by raster" = any(
+        !is.na(my_extract(mosquito_raster, locations[c("x", "y")]))
+      ))
       
       # Parameters
       self$humans = humans

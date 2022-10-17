@@ -22,6 +22,7 @@ library(dplyr)
 library(progress)
 library(ggplot2)
 library(future.apply)
+library(tictoc)
 plan(multisession)
 ```
 

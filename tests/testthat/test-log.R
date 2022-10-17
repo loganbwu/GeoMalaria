@@ -66,10 +66,11 @@ test_that("logging works", {
   
   
   # Potentially split the actual animation test out
-  skip("Not working") # Don't run on Github Actions
+  skip_if_not_installed("av") # Require AV package to be installed
   file <- withr::local_tempfile(
     fileext = ".mp4"
   )
-  plot_anim(sim, file)
+  plot_anim(sim, t=5:9, file)
   expect_true(file.exists(file))
+  unlink(file)
 })

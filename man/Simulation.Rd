@@ -67,7 +67,9 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{EIR}}{Entomological inoculation rate by coordinates over time}
 
-\item{\code{vis_grid}}{Data frame version of `vis_raster`
+\item{\code{vis_grid}}{Data frame version of `vis_raster`}
+
+\item{\code{attack_rate}}{Proportion of humans who have been infected at least once
 Representation of humans with only one set of coordinates
 
 Just places people at their highest proportion location

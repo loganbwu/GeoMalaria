@@ -4,12 +4,14 @@
 \alias{plot.Simulation}
 \title{Plot current state of a simulation}
 \usage{
-\method{plot}{Simulation}(x, t = NULL, ...)
+\method{plot}{Simulation}(x, t = NULL, init = FALSE, ...)
 }
 \arguments{
 \item{x}{Simulation object}
 
 \item{t}{Optional, plot simulation as it was at this time}
+
+\item{init}{Logical, show initialisation state with mosquito raster}
 
 \item{...}{Additional arguments}
 }

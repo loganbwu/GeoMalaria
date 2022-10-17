@@ -48,7 +48,7 @@ plot.Simulation = function(x, t=NULL, init=FALSE, ...) {
 #' @param ... Unused
 plot_state = function(sim, t=NULL, background="EIR", ...) {
   # Add visible bindings
-  ID <- x <- y <- t_infection <- location_proportions <- NULL
+  ID <- x <- y <- t_infection <- location_proportions <- intensity <- NULL
   stopifnot("Invalid argument specified for plot background" = background %in% c("EIR", "mosquito"))
   dot_args = list(...)
   
@@ -109,7 +109,7 @@ plot_state = function(sim, t=NULL, background="EIR", ...) {
     geom_raster(aes(fill=intensity), interpolate=TRUE) +
     scale_fill_viridis_c(option="inferno", limits=c(0, background_max)) +
     geom_sf(data=mosquito_border, aes(x=NULL, y=NULL), color="grey", fill="transparent") +
-    geom_line(data=linelist, aes(color=source, group = ID), alpha=0.6) +
+    geom_line(data=linelist %>% group_by(ID) %>% filter(n()>1), aes(color=source, group = ID), alpha=0.6) +
     geom_point(data=linelist, aes(color=source, size=location_proportions), alpha=0.6) +
     scale_size_area(max_size = 2, breaks = 0.25*1:4) +
     scale_color_manual(values = colors, na.value = "grey") +
@@ -177,7 +177,7 @@ plot_epicurve = function(sim, t=NULL, ...) {
 #' Plots map with epicurve. Pre-calculates ranges to ensure frames are consistent.
 #' 
 #' @param sim Simulation object
-#' @param t Optional, vector of times to plot
+#' @param t Optional, plot frames for T in [min(t), max(t)
 #' @param file Optional, write video to a destination
 #' @param ... Additional arguments
 plot_anim = function(sim, t=NULL, file=NULL, ...) {
@@ -196,7 +196,7 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
                unname(rev(sort(table(t_infection)))[1]))
   
   eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
-                 max(0, max(ento_inoculation_rate)))
+                 max(0, max(c(-Inf, ento_inoculation_rate))))
   # makeplot = function() {
   #   frames = lapply(t, function(tt) {
   #     p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
@@ -204,13 +204,18 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   #   })
   # }
   # t = head(t, 10)
-  frame_files = file.path(tempdir(), paste0("frame_", t, ".png"))
+  temp_dir = tempdir()
+  frame_files = file.path(temp_dir, paste0("frame_", t, ".png"))
+  if (is.null(file)) {
+    file = file.path(temp_dir, "animation.mp4")
+    print(paste("Saving animation to", file))
+  }
   
   tryCatch({
-    print("Rendering frames")
     # No parallelisation
+    pb = progress::progress_bar$new(total = length(t))
     for (i in seq_len(length(t))) {
-      print(paste("Frame", i, "of", length(t)))
+      pb$tick()
       plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
       ggsave(frame_files[i], width=1920, height=1080, units="px", dpi=150)
     }
@@ -231,10 +236,10 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
     #   plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
     #   ggsave(frame_files[i], width=1920, height=1080, units="px")
     # }
-    av::av_encode_video(frame_files, 'animation.mp4', framerate = 15)
+    av::av_encode_video(frame_files, file, framerate = 15, verbose = F)
   },
   finally = {
-    print("Removing temporary frames")
+    # print(paste("Removing temporary frames from", temp_dir))
     unlink(frame_files)
   }
   )
@@ -248,6 +253,9 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   #   p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
   #   print(p)
   # }, future.seed=TRUE), file, 1280, 720, res = 144, framerate=15)
+  
+  # Return the output path
+  invisible(file)
 }
 
 
