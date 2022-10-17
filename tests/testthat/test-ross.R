@@ -75,11 +75,12 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
   
   # Simulate both for a long duration but one in weekly time steps, one daily
   n_days = 10
+  pb = progress::progress_bar$new(total = n_days)
   for (i in 1:n_days) {
-    print(i)
+    pb$tick()
     sim$iterate(0.5)
   }
-  plot(sim)
+  plot_epicurve(sim)
   
   Reff = sim$log$compartment %>%
     filter(source == "Transmission") %>%

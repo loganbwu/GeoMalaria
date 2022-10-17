@@ -21,9 +21,7 @@ library(GeoMalaria)
 library(dplyr)
 library(progress)
 library(ggplot2)
-library(future.apply)
 library(tictoc)
-plan(multisession)
 ```
 
 Construct a system of two villages where 200 people live in #1 and 100 live in #2. 10% of people in village 2 also spend half their time in village 1.
@@ -84,7 +82,7 @@ plot_init(sim)
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(1, 999))
+intervals = c(rep(1, 9))
 pb = progress_bar$new(total = length(intervals),
                       format = "Simulating [:bar] :current/:total eta: :eta")
 for (i in seq_along(intervals))  {
