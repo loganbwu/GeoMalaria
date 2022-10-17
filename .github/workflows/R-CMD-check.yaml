@@ -28,6 +28,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
+      - name: Setup FFMpeg
+        if: [ "$RUNNER_OS" == "Linux" ]; then
+              apt install libavfilter-dev
 
       - uses: r-lib/actions/setup-pandoc@v2
 
