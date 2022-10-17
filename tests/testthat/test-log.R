@@ -66,7 +66,6 @@ test_that("logging works", {
   
   
   # Potentially split the actual animation test out
-  skip_if_not_installed("av") # Require AV package to be installed
   file <- withr::local_tempfile(
     fileext = ".mp4"
   )

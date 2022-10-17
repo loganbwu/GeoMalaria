@@ -16,14 +16,14 @@ Imports:
     ggnewscale,
     ggplot2,
     lubridate,
+    magrittr,
     patchwork,
     progress,
     purrr,
-    sf,
     raster,
     RColorBrewer,
-    tidyr,
-    magrittr
+    sf,
+    tidyr
 RoxygenNote: 7.2.1
 Suggests:
     av,

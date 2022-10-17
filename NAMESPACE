@@ -18,6 +18,7 @@ import(RColorBrewer)
 
 importFrom(stats, "dt")
 importFrom(stats, "density")
+importFrom(magrittr, "%>%")
 
 S3method(plot, Simulation)
 S3method(print, Simulation)

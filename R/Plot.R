@@ -197,13 +197,7 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   
   eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
                  max(0, max(c(-Inf, ento_inoculation_rate))))
-  # makeplot = function() {
-  #   frames = lapply(t, function(tt) {
-  #     p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
-  #     print(p)
-  #   })
-  # }
-  # t = head(t, 10)
+
   temp_dir = tempdir()
   frame_files = file.path(temp_dir, paste0("frame_", t, ".png"))
   if (is.null(file)) {
@@ -243,16 +237,6 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
     unlink(frame_files)
   }
   )
-  # frames = future_lapply(t, function(tt) {
-  #   filename = paste0("~/Documents/GeoMalaria/img/frame_", tt, ".png")
-  #   print(filename)
-  #   plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
-  #   ggsave(filename)
-  # })
-  # av::av_capture_graphics(future_lapply(t, function(tt) {
-  #   p = plot(sim, tt, t_range=t_range, eir_max=eir_max, y_max=y_max)
-  #   print(p)
-  # }, future.seed=TRUE), file, 1280, 720, res = 144, framerate=15)
   
   # Return the output path
   invisible(file)
