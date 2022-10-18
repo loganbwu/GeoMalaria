@@ -434,8 +434,12 @@ Simulation = R6Class(
                y = self$locations$y[location_ix])
     },
     
+    #' Fraction of non-seeded people who were infected
     attack_rate = function() {
-      length(unique(self$linelist$ID)) / nrow(self$humans)
+      n_seeds = sum(self$linelist$source == "Seed")
+      n_infections = length(unique(self$linelist$ID))
+      n_people = nrow(self$humans)
+      (n_infections - n_seeds) / (n_people - n_seeds)
     }
   )
 )
