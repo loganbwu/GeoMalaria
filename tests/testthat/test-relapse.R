@@ -19,12 +19,10 @@ test_that("one person can relapse if scheduled manually and relapse if scheduled
     ymn = 0,
     ymx = 1)
   
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
+                       mosquito = Mosquito$new(bite_rate = 1e5),
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 60,
-                       bite_rate = 99999,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 1)
   
   # Advance simulation for period that includes the first relapse

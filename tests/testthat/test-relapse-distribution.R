@@ -23,12 +23,9 @@ test_that("distribution of relapse delays doesn't depend on which number relapse
     ymx = 1)
   
   p_relapse = 0.4
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 0.1,
-                       bite_rate = 0.1,
-                       mosquito_death_rate = 0.5,
                        p_relapse = p_relapse,
                        mean_recovery = 14)
   

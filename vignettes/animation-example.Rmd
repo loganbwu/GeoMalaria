@@ -19,6 +19,7 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(GeoMalaria)
 library(dplyr)
+library(tidyr)
 library(progress)
 library(ggplot2)
 library(tictoc)
@@ -67,38 +68,37 @@ mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
                                               ymax = ceiling(max(houses$y))))
 mosquito_raster[][mosquito_raster[] < 2000] = 0
 
-sim = Simulation$new(humans = people,
+sim = Simulation$new(population = people,
                      locations = houses,
                      mosquito_raster = mosquito_raster,
-                     duration_human_infectivity = 60,
-                     bite_rate = 0.1,
-                     mosquito_death_rate = 0.25,
                      p_relapse = 0.2,
                      log_options = c("linelist", "EIR"))
-plot_init(sim)
+plot(sim, init=TRUE)
 ```
 
 # Run simulation
 
 ```{r}
 # Begin outbreak
-intervals = c(rep(1, 9))
+intervals = c(rep(1, 99))
 pb = progress_bar$new(total = length(intervals),
                       format = "Simulating [:bar] :current/:total eta: :eta")
+tictoc::tic()
 for (i in seq_along(intervals))  {
   pb$tick()
   sim$iterate(intervals[i])
 }
+tictoc::toc()
 ```
 
 # Render animation
 
-Only do this on my computer
+Only do this on my computer because it's not important for vignettes or testing.
 
 ```{r}
 if (interactive()) {
   tictoc::tic()
-  plot_anim(sim, file="animation.mp4")
+  plot_anim(sim, file="animation.mp4", verbose=TRUE)
   tictoc::toc()
 }
 ```

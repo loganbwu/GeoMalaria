@@ -18,12 +18,9 @@ test_that("logging works", {
                                                 ymax = ceiling(max(houses$y))))
   
   # Create two simulations
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 60,
-                       bite_rate = 1,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 0.1,
                        log_options = c("linelist", "compartment", "EIR"))
   
@@ -53,12 +50,9 @@ test_that("logging works", {
   expect_type(sim$EIR$ento_inoculation_rate, "double")
   
   # Test a sim with no logging enabled
-  sim_nolog = Simulation$new(humans = people,
+  sim_nolog = Simulation$new(population = people,
                              locations = houses,
                              mosquito_raster = mosquito_raster,
-                             duration_human_infectivity = 60,
-                             bite_rate = 1,
-                             mosquito_death_rate = 0.25,
                              p_relapse = 0.1,
                              log_options = NULL)
   sim_nolog$iterate(1)

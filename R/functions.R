@@ -36,3 +36,34 @@ make_perlin_mosquitoes = function(env_dimensions, resolution=1) {
   
   mosquito_raster
 }
+
+#' Format numbers with tidy k/M/B/T/% suffixes for ggplot axes
+#' 
+#' @param x Numeric vector, to turn into labels
+#' @examples
+#' # usage
+#' ... +
+#'   scale_y_continuous(labels = label_auto) +
+#'   ...
+label_auto = function(x) {
+  max_x = max(x, na.rm=T)
+  if (max_x > 5e12) {
+    labels = ifelse(x==0, "0", paste(x/1e12, "T"))
+  }
+  else if (max_x > 5e9) {
+    labels = ifelse(x==0, "0", paste(x/1e9, "B"))
+  }
+  else if (max_x > 5e6) {
+    labels = ifelse(x==0, "0", paste(x/1e6, "M"))
+  }
+  else if (max_x > 5e3) {
+    labels = ifelse(x==0, "0", paste(x/1e3, "k"))
+  }
+  else if (max_x == 1 & min(x, na.rm=T) == 0) {
+    labels = scales::percent_format()(x)
+  }
+  else {
+    labels = x
+  }
+  return(labels)
+}

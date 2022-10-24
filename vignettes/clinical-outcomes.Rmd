@@ -1,10 +1,10 @@
 ---
-title: "Two-Village Example"
+title: "Clinical Outcomes"
 output:
   rmarkdown::html_document:
     fig_width: 10
 vignette: >
-  %\VignetteIndexEntry{Two-Village Example}
+  %\VignetteIndexEntry{Clinical Outcomes}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,32 +25,18 @@ Construct a system of two villages where 200 people live in #1 and 100 live in #
 
 ```{r}
 set.seed(0)
-pop_1 = 200
-pop_2 = 100
-n_houses_1 = 30
-n_houses_2 = 15
+n = 200
+n_infected = ceiling(n/10)
+n_houses = 30
 # Construct living locations
-houses_1 = tibble(x = rnorm(n_houses_1, 0, 15),
-                  y = rnorm(n_houses_1, 0, 15)) %>%
+houses = tibble(x = rnorm(n_houses, 0, 15),
+                y = rnorm(n_houses, 0, 15)) %>%
   mutate(ID = row_number())
-houses_2 = tibble(x = rnorm(n_houses_2, 100, 10),
-                  y = rnorm(n_houses_2, 0, 10)) %>%
-  mutate(ID = row_number() + max(houses_1$ID))
-houses = bind_rows(houses_1, houses_2)
-loc_ix_1 = as.list(sample(houses_1$ID, pop_1, T))
-loc_ix_2 = as.list(sample(houses_2$ID, pop_2, T))
-# 10% of people in village 2 spend 50% of time in village 1
-for (i in 1:round(pop_2 * 0.1)) {
-  loc_ix_2[[i]] = c(loc_ix_2[[i]], sample(houses_1$ID, 1))
-}
-location_ix = c(loc_ix_1, loc_ix_2)
+loc_ix = as.list(sample(houses$ID, n, T))
 
 # Construct people
-people_1 = tibble(location_ix = loc_ix_1,
-                  t_infection = NA_real_)
-people_2 = tibble(location_ix = loc_ix_2,
-                  t_infection = 0)
-people = bind_rows(people_1, people_2) %>%
+population = tibble(location_ix = loc_ix,
+                    t_infection = sample(c(rep(0, n_infected), rep(NA, n-n_infected)), n)) %>%
   mutate(ID = row_number(),
          location_proportions = lapply(location_ix, function(x) {
            unnormed = rep(1, )
@@ -65,15 +51,18 @@ mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
 mosquito_raster[][mosquito_raster[] < 3000] = 0
 
 mos = Mosquito$new()
-villagesim = Simulation$new(population = people,
-                            locations = houses,
-                            mosquito = mos,
-                            mosquito_raster = mosquito_raster,
-                            p_relapse = 0.2)
+human = Human$new()
+sim = Simulation$new(population = population,
+                     locations = houses,
+                     mosquito = mos,
+                     human = human,
+                     mosquito_raster = mosquito_raster,
+                     p_relapse = 0.2)
 
 
 plot(mos)
-plot(villagesim)
+plot(human)
+plot(sim)
 ```
 
 # Run simulation

@@ -22,12 +22,9 @@ test_that("overall behaviour is not dependent on time step size", {
     location_proportions = as.list(rep(1, n)),
     t_infection = c(rep(0, n_infected), rep(NA, n-n_infected))
   )
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
-                       bite_rate = 0.1,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 0,
                        mean_recovery = 14)
   
@@ -43,7 +40,7 @@ test_that("overall behaviour is not dependent on time step size", {
     sim_B$iterate(2)
   }
   # Check that the one reaches identical states
-  expect_equal(sim_A$humans, sim_B$humans)
+  expect_equal(sim_A$population, sim_B$population)
   
   ####
   # Setup for second experiment
@@ -56,12 +53,9 @@ test_that("overall behaviour is not dependent on time step size", {
     location_proportions = as.list(rep(1, n)),
     t_infection = c(rep(0, n_infected), rep(NA, n-n_infected))
   )
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
-                       bite_rate = 0.1,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 0,
                        mean_recovery = 14)
   sim$iterate(10)

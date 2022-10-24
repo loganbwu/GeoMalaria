@@ -20,12 +20,9 @@ test_that("a person nearby can be infected but a person far away cannot be.", {
     ymn = 0,
     ymx = 1)
   
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
-                       mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 60,
-                       bite_rate = 1,
-                       mosquito_death_rate = 0.25)
+                       mosquito_raster = mosquito_raster)
   
   # Advance time
   for (i in 1:10) sim$iterate(5)

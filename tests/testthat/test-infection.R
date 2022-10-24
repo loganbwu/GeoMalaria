@@ -18,12 +18,10 @@ test_that("two people living in close proximity with lots of mosquitoes can be i
     ymn = 0,
     ymx = 1)
   
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
-                       mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 60,
-                       bite_rate = 99999,
-                       mosquito_death_rate = 0.25)
+                       mosquito = Mosquito$new(bite_rate = 1e5),
+                       mosquito_raster = mosquito_raster)
   
   # Advance time
   for (i in 1:30) sim$iterate(1)

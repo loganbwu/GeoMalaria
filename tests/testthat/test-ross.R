@@ -40,8 +40,8 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
   })
   
   # Person is immune if they have a current infection
-  Simulation$set("public", "human_immunity", function(humans, t) {
-    immunity = as.numeric(!is.na(humans$t_infection))
+  Simulation$set("public", "human_immunity", function(population, t) {
+    immunity = as.numeric(!is.na(population$t_infection))
     replace_na(immunity, 0)
   }, overwrite = TRUE)
   # mean_infectivity = 1 / rm$r
@@ -52,8 +52,8 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
   }, overwrite = TRUE)
   
   # Make human infectivity constant
-  Simulation$set("public", "human_infectivity", function(humans, t) {
-    infectivity = ifelse(t - humans$t_infection >= 0, 1, 0)
+  Simulation$set("public", "human_infectivity", function(population, t) {
+    infectivity = ifelse(t - population$t_infection >= 0, 1, 0)
     replace_na(infectivity, 0)
   }, overwrite = TRUE)
   
@@ -63,12 +63,11 @@ test_that("replicate stochastic Ross-Macdonald behaviour", {
     replace_na(infectivity, 0)
   }, overwrite = TRUE)
   
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
+                       mosquito = Mosquito$new(bite_rate = rm$a,
+                                               death_rate = 1 - rm$p),
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
-                       bite_rate = rm$a,
-                       mosquito_death_rate = 1 - rm$p,
                        p_relapse = 0,
                        mean_recovery = 14)
   

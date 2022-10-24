@@ -21,20 +21,19 @@ test_that("under reasonable circumstances transmission occurs indefinitely", {
     ymx = 1)
   
   # Set a custom immunity profile with complete gradual waning
-  Simulation$set("public", "human_immunity", function(humans, t) {
+  Simulation$set("public", "human_immunity", function(population, t) {
     immunity = approx(c(0, 60, 120),
                       c(1, 1, 0),
-                      t - humans$t_infection,
+                      t - population$t_infection,
                       yleft = 0, yright = 1)$y
     replace_na(immunity, 0)
   }, overwrite = TRUE)
   
-  sim_base = Simulation$new(humans = people,
+  sim_base = Simulation$new(population = people,
                             locations = houses,
+                            mosquito = Mosquito$new(bite_rate = 1,
+                                                    death_rate = 0.25),
                             mosquito_raster = mosquito_raster,
-                            duration_human_infectivity = 60,
-                            bite_rate = 1,
-                            mosquito_death_rate = 0.25,
                             p_relapse = 0.5)
   
   # Make copies of the initialised simulation

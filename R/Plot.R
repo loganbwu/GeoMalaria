@@ -1,44 +1,4 @@
-#' Print simulation
-#' 
-#' @param x Simulation object
-#' @param ... Additional arguments
-print.Simulation = function(x, ...) {
-  print(
-    list(
-      "t" = x$t,
-      "linelist" = x$linelist,
-      "humans" = x$humans,
-      "attack_rate" = length(unique(x$linelist$ID)) / nrow(x$humans)
-    )
-  )
-}
-
-#' Plot initial state of a simulation
-#' 
-#' Valid at any time period, output should not depend on whether simulation is run
-#' 
-#' @param sim Simulation object
-plot_init = function(sim) {
-  plot.Simulation(sim, t=0, init=TRUE)
-}
-
-#' Plot current state of a simulation
-#' 
-#' Plots map with epicurve
-#' 
-#' @param x Simulation object
-#' @param t Optional, plot simulation as it was at this time
-#' @param init Logical, show initialisation state with mosquito raster
-#' @param ... Additional arguments
-plot.Simulation = function(x, t=NULL, init=FALSE, ...) {
-  if (init) {
-    plot_state(x, t, background="mosquito", ...)
-  } else {
-    p_state = plot_state(x, t, ...)
-    p_epicurve = plot_epicurve(x, t, ...) + guides(fill = "none")
-    p_state / p_epicurve + plot_layout(heights=c(5,1), guides="collect")
-  }
-}
+# File for plotting functions that haven't been moved into their proper class
 
 #' Plot map of simulation
 #' 
@@ -65,7 +25,7 @@ plot_state = function(sim, t=NULL, background="EIR", ...) {
     group_by(ID) %>%
     slice(1) %>%
     ungroup() %>%
-    full_join(sim$humans_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
+    full_join(sim$population_expand[,c("ID", "x", "y", "location_proportions")], by="ID")
   linelist$source[is.na(linelist$source)] = "None"
   linelist$source = fct_inorder(linelist$source)
   
@@ -180,7 +140,7 @@ plot_epicurve = function(sim, t=NULL, ...) {
 #' @param t Optional, plot frames for T in [min(t), max(t)
 #' @param file Optional, write video to a destination
 #' @param ... Additional arguments
-plot_anim = function(sim, t=NULL, file=NULL, ...) {
+plot_anim = function(sim, t=NULL, file=NULL, verbose=FALSE, ...) {
   if (is.null(t)) {
     t_range = list(min = 0,
                    max = sim$t)
@@ -197,7 +157,7 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   
   eir_max = with(sim$EIR[sim$EIR$t >= t_range$min & sim$EIR$t <= t_range$max,],
                  max(0, max(c(-Inf, ento_inoculation_rate))))
-
+  
   temp_dir = tempdir()
   frame_files = file.path(temp_dir, paste0("frame_", t, ".png"))
   if (is.null(file)) {
@@ -207,9 +167,13 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   
   tryCatch({
     # No parallelisation
-    pb = progress::progress_bar$new(total = length(t))
+    if (verbose) {
+      pb = progress::progress_bar$new(total = length(t))
+    }
     for (i in seq_len(length(t))) {
-      pb$tick()
+      if (verbose) {
+        pb$tick()
+      }
       plot(sim, t[i], t_range=t_range, eir_max=eir_max, y_max=y_max)
       ggsave(frame_files[i], width=1920, height=1080, units="px", dpi=150)
     }
@@ -240,60 +204,6 @@ plot_anim = function(sim, t=NULL, file=NULL, ...) {
   
   # Return the output path
   invisible(file)
-}
-
-
-#' Plot spread of mosquitoes over distance
-#' 
-#' @param sim Simulation object
-plot_mosquito_migration = function(sim) {
-  dx = seq(-sim$max_mosquito_flight_range,
-           sim$max_mosquito_flight_range,
-           length.out = 100)
-  dt = seq(1, sim$max_mosquito_lifespan, length.out=7)
-  expand.grid(dx=dx, dt=dt) %>%
-    mutate(density = sim$mosquito_migration(dx, 0, dt)) %>%
-    ggplot(aes(x=dx, y=density, color=dt, group=dt)) +
-    geom_line() +
-    scale_color_binned(breaks = dt) +
-    labs(title = "Distance travelled by mosquitoes",
-         x = "Distance (1D shown; actual diffusion is 2D)", y = "Density",
-         color = "Days since\nblood meal")
-}
-
-#' Plot mosquito infectivity curve
-#' 
-#' @param sim Simulation object
-plot_mosquito_infectivity = function(sim) {
-  # Add visible bindings
-  survival <- sporozoites <- value <- name <- NULL
-  
-  tibble(dt = seq(0, sim$max_mosquito_lifespan, length.out=1000),
-         survival = sim$mosquito_survival(dt),
-         sporozoites = sim$mosquito_sporogony(dt),
-         infectivity = survival*sporozoites) %>%
-    pivot_longer(cols = -dt) %>%
-    ggplot(aes(x = dt, y = value, color = name, linetype = name)) +
-    geom_line() +
-    labs(title = "Inoculation probability after blood meal",
-         x = "Days since blood meal", y = "Probability", color = "Attribute")
-}
-
-#' Plot human infectivity curve
-#' 
-#' @param sim Simulation object
-plot_human_infectivity = function(sim) {
-  # Add visible bindings
-  value <- name <- NULL
-  
-  tibble(dt = seq(0, 2*sim$duration_human_infectivity, length.out=1000),
-         gametocyte_load = sim$human_infectivity(dt=dt),
-         immunity = sim$human_immunity(dt=dt)) %>%
-    pivot_longer(cols = -dt) %>%
-    ggplot(aes(x = dt, y = value, color = name)) +
-    geom_line() +
-    labs(title = "Inoculation load and immunity after infection",
-         x = "Days since human infection", y = "Probability", color = "Attribute")
 }
 
 #' Plot human relapse risk

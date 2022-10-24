@@ -23,12 +23,9 @@ test_that("Rate of infection is linear with local infectors", {
     location_proportions = as.list(rep(1, n)),
     t_infection = c(rep(0, n_infected), rep(NA, n-n_infected))
   )
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
-                       bite_rate = 0.1,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 0,
                        mean_recovery = 14)
 
@@ -52,12 +49,9 @@ test_that("Rate of infection is linear with local infectors", {
     location_proportions = as.list(rep(1, n)),
     t_infection = c(rep(0, n_infected), rep(NA, n-n_infected))
   )
-  sim = Simulation$new(humans = people,
+  sim = Simulation$new(population = people,
                        locations = houses,
                        mosquito_raster = mosquito_raster,
-                       duration_human_infectivity = 100,
-                       bite_rate = 0.1,
-                       mosquito_death_rate = 0.25,
                        p_relapse = 0,
                        mean_recovery = 14)
   
