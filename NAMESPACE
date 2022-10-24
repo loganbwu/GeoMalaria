@@ -1,6 +1,7 @@
 exportPattern("^[[:alpha:]]+")
 
 import(dplyr)
+import(data.table)
 import(tidyr)
 import(ggplot2)
 importFrom(raster, raster)
