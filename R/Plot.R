@@ -139,6 +139,7 @@ plot_epicurve = function(sim, t=NULL, ...) {
 #' @param sim Simulation object
 #' @param t Optional, plot frames for T in [min(t), max(t)
 #' @param file Optional, write video to a destination
+#' @param verbose Print extra information while rendering animation
 #' @param ... Additional arguments
 plot_anim = function(sim, t=NULL, file=NULL, verbose=FALSE, ...) {
   if (is.null(t)) {

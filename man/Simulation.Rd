@@ -10,6 +10,37 @@ Malaria simulation class
 }
 \details{
 Agent-based simulation for P. vivax malaria in a spatial context
+
+
+Advance simulation by `dt`. Calculates the current state of population, infects
+mosquitoes and population simultaneously, updates population and mosquitoes, then
+stores observations for analysis.
+
+
+Updates simulation's raster and densities at each location
+
+
+Calculate EIR at a location with x and y elements
+
+
+
+Schedule a relapse infection for number of days after the primary infection.
+Returns `Inf` value if no relapse.
+shape = (mean / sd)^2
+rate =  mean / sd^2
+
+
+
+Schedule a recovery for number of days after the primary infection. Can
+also be used to schedule the success of treatment.
+Returns `Inf` value if no complete clearance
+
+
+
+Plots map with epicurve or the starting parameters if simulation is in its initialised state
+
+
+Just places people at their highest proportion location
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -20,16 +51,6 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{mosquito_raster}}{Raster object of mosquito counts}
 
-\item{\code{max_mosquito_lifespan}}{Constrain mosquitoes to an absolute maximum lifespan}
-
-\item{\code{duration_human_infectivity}}{Constrain infectious period}
-
-\item{\code{max_mosquito_flight_range}}{Constrain mosquito diffusion distance in km}
-
-\item{\code{bite_rate}}{Bites per mosquito per density}
-
-\item{\code{mosquito_death_rate}}{Proportion of mosquitoes that die per day, simulated continuously}
-
 \item{\code{sporozoite_infection_rate}}{Proportion of infectious mosquito bites that can result in infection}
 
 \item{\code{p_relapse}}{Probability of an infection scheduling a relapse}
@@ -38,17 +59,15 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{vis_raster}}{Raster to visualise any spatial fields on}
 
-\item{\code{humans}}{Data frame of humans}
+\item{\code{population}}{Data frame of population}
 
 \item{\code{locations}}{Data frame of human locations}
 
 \item{\code{mosquito_infections}}{Data frame of current mosquito infection events}
 
-\item{\code{mosquito_travel}}{Constant of mosquito travel in variance of location after one day}
+\item{\code{relapse_shape}}{Shape constant of the human relapse distribution}
 
-\item{\code{human_relapse_shape}}{Shape constant of the human relapse distribution}
-
-\item{\code{human_relapse_rate}}{Rate constant of the human relapse distribution}
+\item{\code{relapse_rate}}{Rate constant of the human relapse distribution}
 
 \item{\code{log}}{Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"}
 }
@@ -57,9 +76,9 @@ Agent-based simulation for P. vivax malaria in a spatial context
 \section{Active bindings}{
 \if{html}{\out{<div class="r6-active-bindings">}}
 \describe{
-\item{\code{humans_collapse}}{Represent humans with only one set of coordinates}
+\item{\code{population_collapse}}{Represent population with only one set of coordinates}
 
-\item{\code{humans_expand}}{Represent humans at all of their coordinates}
+\item{\code{population_expand}}{Represent population at all of their coordinates}
 
 \item{\code{linelist}}{Safely access linelist if logged}
 
@@ -69,11 +88,7 @@ Agent-based simulation for P. vivax malaria in a spatial context
 
 \item{\code{vis_grid}}{Data frame version of `vis_raster`}
 
-\item{\code{attack_rate}}{Proportion of humans who have been infected at least once
-Representation of humans with only one set of coordinates
-
-Just places people at their highest proportion location
-Represent humans at all of their coordinates}
+\item{\code{attack_rate}}{Proportion of population who have been infected at least once}
 }
 \if{html}{\out{</div>}}
 }
@@ -84,13 +99,10 @@ Represent humans at all of their coordinates}
 \item \href{#method-Simulation-iterate}{\code{Simulation$iterate()}}
 \item \href{#method-Simulation-set_mosquito_raster}{\code{Simulation$set_mosquito_raster()}}
 \item \href{#method-Simulation-calculate_EIR}{\code{Simulation$calculate_EIR()}}
-\item \href{#method-Simulation-mosquito_survival}{\code{Simulation$mosquito_survival()}}
-\item \href{#method-Simulation-mosquito_sporogony}{\code{Simulation$mosquito_sporogony()}}
-\item \href{#method-Simulation-mosquito_migration}{\code{Simulation$mosquito_migration()}}
-\item \href{#method-Simulation-human_infectivity}{\code{Simulation$human_infectivity()}}
-\item \href{#method-Simulation-human_immunity}{\code{Simulation$human_immunity()}}
-\item \href{#method-Simulation-human_schedule_relapse}{\code{Simulation$human_schedule_relapse()}}
-\item \href{#method-Simulation-human_schedule_recovery}{\code{Simulation$human_schedule_recovery()}}
+\item \href{#method-Simulation-schedule_relapse}{\code{Simulation$schedule_relapse()}}
+\item \href{#method-Simulation-schedule_recovery}{\code{Simulation$schedule_recovery()}}
+\item \href{#method-Simulation-plot}{\code{Simulation$plot()}}
+\item \href{#method-Simulation-print}{\code{Simulation$print()}}
 \item \href{#method-Simulation-clone}{\code{Simulation$clone()}}
 }
 }
@@ -101,12 +113,11 @@ Represent humans at all of their coordinates}
 Initialize a simulation instance
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$new(
-  humans,
+  population,
   locations,
+  mosquito = Mosquito$new(),
   mosquito_raster,
-  duration_human_infectivity,
-  mosquito_death_rate,
-  bite_rate,
+  human = Human$new(),
   p_relapse = 0,
   mean_recovery = 14,
   log_options = c("linelist", "compartment")
@@ -116,28 +127,29 @@ Initialize a simulation instance
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{humans}}{dataframe of residents in the area}
+\item{\code{population}}{dataframe of residents in the area}
 
 \item{\code{locations}}{dataframe of human locations}
 
+\item{\code{mosquito}}{class for mosquitoes}
+
+\item{\code{mosquito}}{class for mosquitoes}
+
 \item{\code{mosquito_raster}}{raster of the number of mosquitoes per cell}
 
-\item{\code{duration_human_infectivity}}{maximum infectious period of a human in days}
+\item{\code{human}}{class for humans}
 
-\item{\code{mosquito_death_rate}}{proportion of mosquitoes that die per day}
-
-\item{\code{bite_rate}}{probability of each mosquito biting a human in a cell}
+\item{\code{human}}{class for humans}
 
 \item{\code{p_relapse}}{Proportion of infections that trigger relapses}
 
 \item{\code{mean_recovery}}{Unused}
 
-\item{\code{log_options}}{Logging options
-Iterate simulation
+\item{\code{log_options}}{Logging options}
 
-Advance simulation by `dt`. Calculates the current state of humans, infects
-mosquitoes and humans simultaneously, updates humans and mosquitoes, then
-stores observations for analysis.}
+\item{\code{mosquito_death_rate}}{proportion of mosquitoes that die per day}
+
+\item{\code{bite_rate}}{probability of each mosquito biting a human in a cell}
 }
 \if{html}{\out{</div>}}
 }
@@ -146,6 +158,7 @@ stores observations for analysis.}
 \if{html}{\out{<a id="method-Simulation-iterate"></a>}}
 \if{latex}{\out{\hypertarget{method-Simulation-iterate}{}}}
 \subsection{Method \code{iterate()}}{
+Iterate simulation
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$iterate(dt, debug = FALSE)}\if{html}{\out{</div>}}
 }
@@ -155,10 +168,7 @@ stores observations for analysis.}
 \describe{
 \item{\code{dt}}{Time to advance simulation by in days}
 
-\item{\code{debug}}{Optional, print debug information
-Recompute location mosquito densities from a raster
-
-Updates simulation's raster and densities at each location}
+\item{\code{debug}}{Optional, print debug information}
 }
 \if{html}{\out{</div>}}
 }
@@ -167,6 +177,7 @@ Updates simulation's raster and densities at each location}
 \if{html}{\out{<a id="method-Simulation-set_mosquito_raster"></a>}}
 \if{latex}{\out{\hypertarget{method-Simulation-set_mosquito_raster}{}}}
 \subsection{Method \code{set_mosquito_raster()}}{
+Recompute location mosquito densities from a raster
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$set_mosquito_raster(mosquito_raster)}\if{html}{\out{</div>}}
 }
@@ -174,10 +185,7 @@ Updates simulation's raster and densities at each location}
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{mosquito_raster}}{Raster of mosquito densities
-Entomological inoculation rate
-
-Calculate EIR at a location with x and y elements}
+\item{\code{mosquito_raster}}{Raster of mosquito densities}
 }
 \if{html}{\out{</div>}}
 }
@@ -186,6 +194,7 @@ Calculate EIR at a location with x and y elements}
 \if{html}{\out{<a id="method-Simulation-calculate_EIR"></a>}}
 \if{latex}{\out{\hypertarget{method-Simulation-calculate_EIR}{}}}
 \subsection{Method \code{calculate_EIR()}}{
+Entomological inoculation rate
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Simulation$calculate_EIR(loc)}\if{html}{\out{</div>}}
 }
@@ -199,157 +208,80 @@ Calculate EIR at a location with x and y elements}
 }
 \subsection{Returns}{
 Numeric vector of EIR
-Proportion of mosquitoes that survive over time
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-mosquito_survival"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-mosquito_survival}{}}}
-\subsection{Method \code{mosquito_survival()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_survival(dt)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{dt}}{Time since mosquito inoculation in days
-Proportion of mosquitoes with sporozoites over time}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-mosquito_sporogony"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-mosquito_sporogony}{}}}
-\subsection{Method \code{mosquito_sporogony()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_sporogony(dt)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{dt}}{Time since mosquito inoculation in days
-Mosquito density
-
-Mosquito density calculated if they started at a point and traveled `dx` and
-`dy` in time `dt`. Variance is constant at (km/day)^2. Uses the Laplace isometric
-diffusion solution.}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-mosquito_migration"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-mosquito_migration}{}}}
-\subsection{Method \code{mosquito_migration()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$mosquito_migration(dx, dy, dt)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{dx}}{Distance traveled horizontally in km}
-
-\item{\code{dy}}{Distance traveled vertically}
-
-\item{\code{dt}}{Time since origin in days
-Lifecycle stages for P. vivax in humans after inoculation
-
-Calculates a vector of probability of infecting mosquito with gametocytes in the grid cell.
-Specify either `humans` AND `t`, OR `dt`}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-human_infectivity"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-human_infectivity}{}}}
-\subsection{Method \code{human_infectivity()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_infectivity(humans = NULL, t = NULL, dt = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{humans}}{Dataframe of humans with a `t_infection` column}
-
-\item{\code{t}}{Simulation time}
-
-\item{\code{dt}}{Time since infection
-Human immunity profile over time
-
-Full immunity then decays to 50% 
-scales # bites not # susceptible people. E.g. no one retains complete immunity
-after decay, everyone retains partial protection.
-
-Specify either `humans` AND `t`, OR `dt`}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-human_immunity"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-human_immunity}{}}}
-\subsection{Method \code{human_immunity()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_immunity(humans = NULL, t = NULL, dt = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{humans}}{Dataframe of humans with a `t_infection` column}
-
-\item{\code{t}}{Simulation time}
-
-\item{\code{dt}}{Time since infection
+\if{html}{\out{<a id="method-Simulation-schedule_relapse"></a>}}
+\if{latex}{\out{\hypertarget{method-Simulation-schedule_relapse}{}}}
+\subsection{Method \code{schedule_relapse()}}{
 Human relapse distribution
-
-Schedule a relapse infection for number of days after the primary infection.
-Returns `Inf` value if no relapse.
-shape = (mean / sd)^2
-rate =  mean / sd^2}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-human_schedule_relapse"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-human_schedule_relapse}{}}}
-\subsection{Method \code{human_schedule_relapse()}}{
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_schedule_relapse(n)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{n}}{Number of people to schedule relapses for
-Human recovery distribution
-
-Schedule a recovery for number of days after the primary infection. Can
-also be used to schedule the success of treatment.
-Returns `Inf` value if no recovery}
-}
-\if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Simulation-human_schedule_recovery"></a>}}
-\if{latex}{\out{\hypertarget{method-Simulation-human_schedule_recovery}{}}}
-\subsection{Method \code{human_schedule_recovery()}}{
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Simulation$human_schedule_recovery(n)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$schedule_relapse(n)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{n}}{Number of people to schedule relapses for}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Simulation-schedule_recovery"></a>}}
+\if{latex}{\out{\hypertarget{method-Simulation-schedule_recovery}{}}}
+\subsection{Method \code{schedule_recovery()}}{
+Human recovery distribution
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$schedule_recovery(n)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{n}}{Number of people to schedule relapses for}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Simulation-plot"></a>}}
+\if{latex}{\out{\hypertarget{method-Simulation-plot}{}}}
+\subsection{Method \code{plot()}}{
+Plot current state of a simulation
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$plot(t = NULL, init = NULL, ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{t}}{Optional, plot simulation as it was at this time}
+
+\item{\code{init}}{Logical, show initialisation state with mosquito raster}
+
+\item{\code{...}}{Additional arguments}
+
+\item{\code{x}}{Simulation object}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Simulation-print"></a>}}
+\if{latex}{\out{\hypertarget{method-Simulation-print}{}}}
+\subsection{Method \code{print()}}{
+Print simulation
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Simulation$print(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments}
+
+\item{\code{x}}{Simulation object}
 }
 \if{html}{\out{</div>}}
 }

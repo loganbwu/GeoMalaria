@@ -23,6 +23,7 @@ Imports:
     purrr,
     raster,
     RColorBrewer,
+    scales,
     sf,
     tidyr
 RoxygenNote: 7.2.1

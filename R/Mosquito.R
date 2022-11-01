@@ -13,6 +13,8 @@ Mosquito = R6Class(
   #' @field death_rate Proportion of mosquitoes that die per day, simulated continuously
   #' @field travel Constant of mosquito travel in variance of location after one day
   #' @field bite_rate Bites per mosquito per density
+  #' @field max_lifespan Automatic: ignore mosquitoes after this duration after biting
+  #' @field max_flight_range Automatic: ignore mosquitoes this distance from original bite site
   public = list(
     distribution = NULL,
     death_rate = NULL,

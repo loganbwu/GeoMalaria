@@ -32,9 +32,9 @@ DynamicFrame = R6Class(
     }
   ),
   
-  #' @field data List of data
-  #' @field size Current number of slots in memory
-  #' @field count Number of elements stored
+  # data List of data
+  # size Current number of slots in memory
+  # count Number of elements stored
   private = list(
     data = list(),
     size = 0,

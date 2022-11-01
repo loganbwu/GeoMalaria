@@ -9,6 +9,8 @@ Simulation = R6Class(
   #' @field t Current simulation time in days
   #' @field min_dt Smallest time step used so far
   #' @field mosquito_raster Raster object of mosquito counts
+  #' @param mosquito class for mosquitoes
+  #' @param human class for humans
   #' @field sporozoite_infection_rate Proportion of infectious mosquito bites that can result in infection
   #' @field p_relapse Probability of an infection scheduling a relapse
   #' @field mean_recovery Recovery parameter mean=1/rate. Could be changed for other distributions or functions
@@ -16,7 +18,6 @@ Simulation = R6Class(
   #' @field population Data frame of population
   #' @field locations Data frame of human locations
   #' @field mosquito_infections Data frame of current mosquito infection events
-  #' @field mosquito_travel Constant of mosquito travel in variance of location after one day
   #' @field relapse_shape Shape constant of the human relapse distribution
   #' @field relapse_rate Rate constant of the human relapse distribution
   #' @field log Character vector of logging options. Options include "linelist", "compartment", and/or "EIR"
@@ -47,6 +48,7 @@ Simulation = R6Class(
     #' @param population dataframe of residents in the area
     #' @param locations dataframe of human locations
     #' @param mosquito class for mosquitoes
+    #' @param human class for humans
     #' @param mosquito_raster raster of the number of mosquitoes per cell
     #' @param mosquito_death_rate proportion of mosquitoes that die per day
     #' @param bite_rate probability of each mosquito biting a human in a cell

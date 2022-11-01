@@ -4,14 +4,16 @@
 \alias{plot_anim}
 \title{Animates a simulation}
 \usage{
-plot_anim(sim, t = NULL, file = NULL, ...)
+plot_anim(sim, t = NULL, file = NULL, verbose = FALSE, ...)
 }
 \arguments{
 \item{sim}{Simulation object}
 
-\item{t}{Optional, vector of times to plot}
+\item{t}{Optional, plot frames for T in [min(t), max(t)}
 
 \item{file}{Optional, write video to a destination}
+
+\item{verbose}{Print extra information while rendering animation}
 
 \item{...}{Additional arguments}
 }

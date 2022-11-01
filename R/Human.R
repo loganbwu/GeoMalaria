@@ -41,11 +41,6 @@ Human = R6Class(
       replace_na(parasite_density, 0)
     },
     
-    #' @description Thresholds for human clinical outcomes
-    #' 
-    #' @param d_parasitaemia
-    #' @name human_clinical
-    
     #' @description Criteria to show symptoms
     #' 
     #' @rdname human_clinical
@@ -137,7 +132,11 @@ plot_human_infectivity = function(human) {
          x = "Days since human infection", y = "Probability", color = "Attribute")
 }
 
+#' Plot human clinical outcomes
+#' 
+#' @param human Human object
 plot_human_clinical_outcomes = function(human) {
+  parasitaemia <- name <- NULL
   
   data = tibble(dt = seq(0, 2*human$duration_infectivity, length.out=1000),
                 parasitaemia = human$parasitaemia(dt=dt))
