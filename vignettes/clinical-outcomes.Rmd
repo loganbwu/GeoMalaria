@@ -25,30 +25,27 @@ Construct a system of two villages where 200 people live in #1 and 100 live in #
 
 ```{r}
 set.seed(0)
-n = 200
-n_infected = ceiling(n/10)
-n_houses = 30
+n = 1
+n_infected = 1
+n_houses = 1
 # Construct living locations
-houses = tibble(x = rnorm(n_houses, 0, 15),
-                y = rnorm(n_houses, 0, 15)) %>%
-  mutate(ID = row_number())
-loc_ix = as.list(sample(houses$ID, n, T))
+houses = tibble(x = 0, y = 0, ID = 1)
 
 # Construct people
-population = tibble(location_ix = loc_ix,
-                    t_infection = sample(c(rep(0, n_infected), rep(NA, n-n_infected)), n)) %>%
-  mutate(ID = row_number(),
-         location_proportions = lapply(location_ix, function(x) {
-           unnormed = rep(1, )
-           rep(1/length(x), length(x))
-         }))
+population = tibble(ID = 1,
+                    t_infection = 0,
+                    location_ix = list(1),
+                    location_proportions = list(1))
 
 # Construct mosquito environment
-mosquito_raster = make_perlin_mosquitoes(list(xmin = floor(min(houses$x)),
-                                              xmax = ceiling(max(houses$x)),
-                                              ymin = floor(min(houses$y)),
-                                              ymax = ceiling(max(houses$y))))
-mosquito_raster[][mosquito_raster[] < 3000] = 0
+mosquito_raster = raster::raster(
+    vals = 1000,
+    ncols = 1,
+    nrows = 1,
+    xmn = -1,
+    xmx = 1,
+    ymn = -1,
+    ymx = 1)
 
 mos = Mosquito$new()
 human = Human$new()
@@ -70,23 +67,19 @@ plot(sim)
 ```{r}
 # Begin outbreak
 for (t in seq_len(50))  {
-  villagesim$iterate(1)
+  sim$iterate(1)
 }
 
 # Interrupt and clear all current human and mosquito infections
-villagesim$population = villagesim$population %>%
+sim$population = sim$population %>%
   mutate(t_infection = NA)
-villagesim$mosquito_infections = villagesim$mosquito_infections %>%
+sim$mosquito_infections = sim$mosquito_infections %>%
   slice(0)
 
 # Run for more iterations
 for (t in seq_len(150))  {
-  villagesim$iterate(1)
+  sim$iterate(1)
 }
 
-plot(villagesim) +
-  geom_vline(xintercept = 50, linetype="dashed") +
-  annotate("text", x=50, y=1, angle=90, hjust=0, vjust=-0.2, label="MDA")
-
-ggsave("mda_fail.png", width=1920, height=1080, units="px", dpi=150)
+plot(sim)
 ```

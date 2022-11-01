@@ -20,6 +20,7 @@ DynamicFrame = R6Class(
     },
     
     #' @description Add rows to the data
+    #' @param ... Data as if passed to `tibble::tibble(...)`
     append = function(...) {
       if (private$size == private$count) {
         length(private$data) = private$size = private$size * 2
@@ -40,7 +41,7 @@ DynamicFrame = R6Class(
     count = 0
   ),
   
-  #' @field df Retrieve ata as a tibble
+  #' @field df Retrieve data as a tibble
   active = list(
     df = function() {
       tibble::as_tibble(data.table::rbindlist(private$data))
