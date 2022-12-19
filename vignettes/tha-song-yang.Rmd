@@ -1,0 +1,51 @@
+---
+title: "Tha Song Yang"
+output:
+  rmarkdown::html_document:
+    fig_width: 10
+vignette: >
+  %\VignetteIndexEntry{Tha Song Yang}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+# library(GeoMalaria)
+library(dplyr)
+library(sf)
+library(ggplot2)
+library(ggmap)
+
+register_google(Sys.getenv("MAPS_API_KEY"))
+```
+
+Investigate the geography of Tha Song Yang
+
+```{r}
+adm0 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/df46a8320bb2f703640664510273bec2be88b180/releaseData/gbOpen/THA/ADM0/geoBoundaries-THA-ADM0_simplified.geojson")
+adm1 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/eb8c046c824d34547fbe9a50b7308b443e76c106/releaseData/gbOpen/THA/ADM1/geoBoundaries-THA-ADM1_simplified.geojson")
+adm2 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/922e33de54786eed936fc13b7b3fd28c50189d5b/releaseData/gbOpen/THA/ADM2/geoBoundaries-THA-ADM2_simplified.geojson")
+
+thailand = adm0
+tak = adm1[adm1$shapeName == "Tak Province",]
+tsy = adm2[adm2$shapeName == "Tha Song Yang",]
+
+ggplot() +
+  geom_sf(data = thailand) +
+  geom_sf(data = tak) +
+  geom_sf(data = tsy) +
+  theme_minimal()
+```
+
+
+```{r}
+treecover = st_read("https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_treecover2000_20N_100E.tif")
+
+```

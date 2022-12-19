@@ -41,10 +41,17 @@ Human = R6Class(
       replace_na(parasite_density, 0)
     },
     
+    #' @description Criteria to be laboratory-detectable
+    #' 
+    #' @rdname human_clinical
+    has_detection = function(d_parasitaemia) {
+      d_parasitaemia > 1e8
+    },
+    
     #' @description Criteria to show symptoms
     #' 
     #' @rdname human_clinical
-    has_symptoms = function(d_parasitaemia) {
+    has_fever = function(d_parasitaemia) {
       d_parasitaemia > 1e8
     },
     
@@ -132,9 +139,6 @@ plot_human_infectivity = function(human) {
          x = "Days since human infection", y = "Probability", color = "Attribute")
 }
 
-#' Plot human clinical outcomes
-#' 
-#' @param human Human object
 plot_human_clinical_outcomes = function(human) {
   parasitaemia <- name <- NULL
   
