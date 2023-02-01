@@ -22,6 +22,10 @@ library(dplyr)
 library(sf)
 library(ggplot2)
 library(ggmap)
+library(rgee)
+library(reticulate)
+# use_python("/Users/wu.l/miniforge3/bin/python")
+use_condaenv("geomalaria")
 
 register_google(Sys.getenv("MAPS_API_KEY"))
 ```
@@ -36,6 +40,7 @@ adm2 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/922e33de54786eed93
 thailand = adm0
 tak = adm1[adm1$shapeName == "Tak Province",]
 tsy = adm2[adm2$shapeName == "Tha Song Yang",]
+tsy_bbox = st_bbox(tsy)
 
 ggplot() +
   geom_sf(data = thailand) +
@@ -46,6 +51,33 @@ ggplot() +
 
 
 ```{r}
-treecover = st_read("https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_treecover2000_20N_100E.tif")
+# treecover = st_read("https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_treecover2000_20N_100E.tif")
+ee_Initialize
+db = "JAXA/ALOS/PALSAR/YEARLY/FNF4"
+image = ee$Im
 
+```
+
+```{r}
+library(terra)
+data = rast("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf")
+plot(data$`"250m 16 days NDVI"`)
+
+library(ncdf4)
+nc = nc_open("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf")
+
+library(hdf5r)
+hdf5 = h5file("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf", "r")
+```
+
+```{python}
+import pandas
+import ee
+ee.Authenticate()
+ee.Initialize()
+
+dataset = ee.ImageCollection("MODIS/061/MOD13Q1").filter(ee.Filter.date('2018-01-01', '2018-05-01'))
+ndvi = dataset.select("NDVI")
+geometry = ee.Geometry.Rectangle(r.tsy_bbox)
+project = ndvi.projection().getInfo()
 ```
