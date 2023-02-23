@@ -12,6 +12,7 @@
 *.pdf
 *.png
 *.timestamp
+*.rda
 inst/doc
 /doc/
 /Meta/
