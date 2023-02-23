@@ -113,7 +113,7 @@ Human = R6Class(
     #' human = Human$new()
     #' plot(human)
     plot = function() {
-      plot_human_infectivity(self) / plot_human_clinical_outcomes(self)
+      patchwork:::`/.ggplot`(plot_human_infectivity(self), plot_human_clinical_outcomes(self))
     }
   )
 )
@@ -144,9 +144,9 @@ plot_human_clinical_outcomes = function(human) {
   
   data = tibble(dt = seq(0, 2*human$duration_infectivity, length.out=1000),
                 parasitaemia = human$parasitaemia(dt=dt))
-  cutoffs = tribble(
+  cutoffs = tibble::tribble(
     ~t, ~name,
-    min(data$dt[human$has_symptoms(data$parasitaemia)]), "Symptoms",
+    min(data$dt[human$has_fever(data$parasitaemia)]), "Fever",
     min(data$dt[human$has_death(data$parasitaemia)]), "Death"
   )
   

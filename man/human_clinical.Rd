@@ -52,7 +52,8 @@ plot(human)
 \itemize{
 \item \href{#method-Human-new}{\code{Human$new()}}
 \item \href{#method-Human-parasitaemia}{\code{Human$parasitaemia()}}
-\item \href{#method-Human-has_symptoms}{\code{Human$has_symptoms()}}
+\item \href{#method-Human-has_detection}{\code{Human$has_detection()}}
+\item \href{#method-Human-has_fever}{\code{Human$has_fever()}}
 \item \href{#method-Human-has_death}{\code{Human$has_death()}}
 \item \href{#method-Human-infectivity}{\code{Human$infectivity()}}
 \item \href{#method-Human-immunity}{\code{Human$immunity()}}
@@ -99,12 +100,22 @@ Lifecycle stages for P. vivax in population after inoculation
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Human-has_symptoms"></a>}}
-\if{latex}{\out{\hypertarget{method-Human-has_symptoms}{}}}
-\subsection{Method \code{has_symptoms()}}{
+\if{html}{\out{<a id="method-Human-has_detection"></a>}}
+\if{latex}{\out{\hypertarget{method-Human-has_detection}{}}}
+\subsection{Method \code{has_detection()}}{
+Criteria to be laboratory-detectable
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Human$has_detection(d_parasitaemia)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Human-has_fever"></a>}}
+\if{latex}{\out{\hypertarget{method-Human-has_fever}{}}}
+\subsection{Method \code{has_fever()}}{
 Criteria to show symptoms
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Human$has_symptoms(d_parasitaemia)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Human$has_fever(d_parasitaemia)}\if{html}{\out{</div>}}
 }
 
 }
