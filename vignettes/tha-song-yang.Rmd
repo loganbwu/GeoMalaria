@@ -22,62 +22,93 @@ library(dplyr)
 library(sf)
 library(ggplot2)
 library(ggmap)
-library(rgee)
-library(reticulate)
-# use_python("/Users/wu.l/miniforge3/bin/python")
-use_condaenv("geomalaria")
-
-register_google(Sys.getenv("MAPS_API_KEY"))
+library(terra)
+library(tidyterra)
 ```
 
 Investigate the geography of Tha Song Yang
 
 ```{r}
-adm0 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/df46a8320bb2f703640664510273bec2be88b180/releaseData/gbOpen/THA/ADM0/geoBoundaries-THA-ADM0_simplified.geojson")
-adm1 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/eb8c046c824d34547fbe9a50b7308b443e76c106/releaseData/gbOpen/THA/ADM1/geoBoundaries-THA-ADM1_simplified.geojson")
-adm2 = st_read("https://github.com/wmgeolab/geoBoundaries/raw/922e33de54786eed936fc13b7b3fd28c50189d5b/releaseData/gbOpen/THA/ADM2/geoBoundaries-THA-ADM2_simplified.geojson")
+geometry = bind_rows(Thailand = thailand,
+                     `Tak province` = tak,
+                     `Tha Song Yang district` = thasongyang,
+                     .id = "Boundary") %>%
+  mutate(Boundary = fct_inorder(Boundary))
 
-thailand = adm0
-tak = adm1[adm1$shapeName == "Tak Province",]
-tsy = adm2[adm2$shapeName == "Tha Song Yang",]
-tsy_bbox = st_bbox(tsy)
+bbox = st_bbox(st_buffer(tak, 10000))
+
+ndvi = rast("../data-raw/CA_eVSH_NDVI.2023.001-010.3KM.COMPRES.001.2023014045819/CA_eVSH_NDVI.2023.001-010.3KM.VI_NDVI.001.2023014042923.tif") %>%
+  terra::crop(st_buffer(thailand %>% st_transform(4326), 100000)) %>%
+  project("EPSG:24047", mask = T)
 
 ggplot() +
-  geom_sf(data = thailand) +
-  geom_sf(data = tak) +
-  geom_sf(data = tsy) +
-  theme_minimal()
+  geom_spatraster(data=ndvi, alpha=0.5) +
+  geom_sf(data=geometry, aes(color=Boundary), alpha=0) +
+  scale_color_brewer(palette = "Set2") +
+  coord_sf(xlim=bbox[c(1,3)], ylim=bbox[c(2,4)]) +
+  theme_minimal() +
+  labs(fill = "NDVI")
 ```
 
+Make a synthetic population
 
 ```{r}
-# treecover = st_read("https://storage.googleapis.com/earthenginepartners-hansen/GFC-2021-v1.9/Hansen_GFC-2021-v1.9_treecover2000_20N_100E.tif")
-ee_Initialize
-db = "JAXA/ALOS/PALSAR/YEARLY/FNF4"
-image = ee$Im
+pop = 500
+n_houses = 100
+n_workplaces = 300
+centroid = st_coordinates(st_centroid(thasongyang))
 
+# Create locations
+houses = tibble(x = rnorm(n_houses, centroid[1], 1000),
+                y = rnorm(n_houses, centroid[2], 1000)) %>%
+  mutate(ID = row_number())
+workplaces = tibble(x = rnorm(n_workplaces, centroid[1], 10000),
+                    y = rnorm(n_workplaces, centroid[2], 10000)) %>%
+  mutate(ID = row_number() + nrow(houses))
+
+# Assign locations for people
+house_ix = as.list(sample(houses$ID, pop, T))
+work_ix = as.list(sample(workplaces$ID, pop, T))
+loc_ix = lapply(seq_len(pop), function(i) {
+  c(house_ix[[i]], work_ix[[i]])
+})
+
+# Discard unused locations and remap IDs
+used_locs = sort(unique(unlist(loc_ix)))
+all_loc_IDs = c(houses$ID, workplaces$ID)
+used_loc_IDs = all_loc_IDs
+used_loc_IDs[used_locs] = seq_along(used_locs) # use position to map to new IDs
+houses = houses %>%
+  filter(ID %in% used_locs) %>%
+  mutate(ID = used_loc_IDs[ID])
+workplaces = workplaces %>%
+  filter(ID %in% used_locs) %>%
+  mutate(ID = used_loc_IDs[ID])
+loc_ix = lapply(loc_ix, function(x) {
+  used_loc_IDs[x]
+})
+
+locations = bind_rows(
+  House = houses,
+  Workplace = workplaces,
+  .id = "Type"
+) %>%
+  st_as_sf(coords=c("x", "y"), crs=24047) %>%
+  mutate(pop = as.integer(table(unlist(loc_ix))[ID]))
+
+# Create other person attributes
+people = tibble(location_ix = loc_ix,
+                t_infection = NA_real_)
 ```
 
 ```{r}
-library(terra)
-data = rast("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf")
-plot(data$`"250m 16 days NDVI"`)
-
-library(ncdf4)
-nc = nc_open("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf")
-
-library(hdf5r)
-hdf5 = h5file("~/Downloads/MOD13Q1.A2022305.h09v04.006.2022322132627.hdf", "r")
-```
-
-```{python}
-import pandas
-import ee
-ee.Authenticate()
-ee.Initialize()
-
-dataset = ee.ImageCollection("MODIS/061/MOD13Q1").filter(ee.Filter.date('2018-01-01', '2018-05-01'))
-ndvi = dataset.select("NDVI")
-geometry = ee.Geometry.Rectangle(r.tsy_bbox)
-project = ndvi.projection().getInfo()
+village = locations %>% st_buffer(10000) %>% st_bbox()
+ggplot() +
+  geom_spatraster(data=ndvi %>% crop(thasongyang %>% st_buffer(10000)), alpha=0.5) +
+  geom_sf(data=thailand, alpha=0) +
+  geom_sf(data=locations, aes(color=Type, size=pop), alpha=0.75) +
+  scale_color_brewer(palette = "Set2") +
+  coord_sf(xlim=village[c(1,3)], ylim=village[c(2,4)]) +
+  theme_minimal() +
+  labs(fill = "NDVI")
 ```
