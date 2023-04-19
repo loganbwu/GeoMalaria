@@ -3,27 +3,8 @@ library(progress)
 library(pbapply)
 library(pbmcapply)
 library(smoother)
+library(patchwork)
 source("R/DynamicFrame.R")
-
-params = list(id = "Baseline",
-              incidence = 0.01,
-              alpha = 0.5, 
-              beta = 0.8,
-              rho = 0.9,
-              lambda = 0.02,
-              delta = 1e-05,
-              f = 1/30, # relapse freq
-              r = 1/60,
-              gamma = 1/223,
-              tau = 2,
-              nu = 50, # people per focus
-              iota_max = 10, # focii per day
-              eta = 1,
-              racd_blood_sens = 0.2,
-              racd_liver_sens = 0,
-              secondary_immunity = 0.5, # scales the force of infection
-              dt = 5
-)
 
 #' Run a single instance of the individual-based simulation
 #' 
@@ -49,6 +30,7 @@ run_simulation = function(i, params,
     t = NA_real_,
     blood = NA_integer_,
     liver = NA_integer_,
+    foci = NA_integer_,
     .rows = n_trace
   )
   i_trace = 1
@@ -109,6 +91,7 @@ run_simulation = function(i, params,
       trace$t[i_trace] = t
       trace$blood[i_trace] = sum(pop$blood_stage) / n
       trace$liver[i_trace] = sum(pop$liver_stage) / n
+      trace$foci[i_trace] = case_detections / dt
       i_trace = i_trace + 1
     }
     if (progress) pb$tick()
@@ -119,15 +102,35 @@ run_simulation = function(i, params,
 run_repeats = function(params, n, ..., mc.cores=8) {
   runs = pbmclapply(seq_len(n), run_simulation, params, ..., mc.cores=mc.cores)
   run_summary = bind_rows(runs) %>%
-    rename(Blood = blood, Liver = liver) %>%
     pivot_longer(cols = -t) %>%
     group_by(t, name) %>%
     summarise(id = params$id,
               LQ = quantile(value, 0.95, na.rm=T),
               UQ = quantile(value, 0.05, na.rm=T),
               median = median(value, na.rm=T),
+              mean = mean(value, na.rm=T),
               .groups = "drop")
 }
+
+
+params = list(id = "Default",
+              incidence = 0.01,
+              alpha = 0.5, 
+              beta = 0.8,
+              rho = 0.9,
+              lambda = 0.02,
+              delta = 5e-06,
+              f = 1/30, # relapse freq
+              r = 1/60,
+              gamma = 1/223,
+              tau = 2,
+              nu = 50, # people per focus
+              iota_max = 1, # focii per day
+              racd_blood_sens = 0.2,
+              racd_liver_sens = 0,
+              secondary_immunity = 0.5, # scales the force of infection
+              dt = 5
+)
 
 # Set up scenarios
 # Scenarios for RCD
@@ -153,7 +156,7 @@ scenario.E$dt = 0.25
 
 # Run simulations
 n = 8000
-max_t = 8*365.25
+max_t = 6*365.25
 n_repeats = 32
 scenarios = list(scenario.A, scenario.B, scenario.C)
 # scenarios = list(scenario.D, scenario.E)
@@ -164,18 +167,37 @@ summaries = lapply(scenarios, run_repeats, n_repeats, forcing=function(t) {
 run_summary = bind_rows(summaries) %>%
   mutate(id = fct_inorder(id)) %>%
   group_by(name, id) %>%
-  mutate_at(vars(median, LQ, UQ), smth.gaussian, window=10, tails=T) %>%
-  mutate(name = paste(name, "stage prevalence"))
+  mutate_at(vars(mean, median, LQ, UQ), smth.gaussian, window=10, tails=T) %>%
+  ungroup() %>%
+  mutate(name = fct_recode(name,
+                           "Blood stage prevalence" = "blood",
+                           "Liver stage prevalence" = "liver",
+                           "Daily reactive case detection foci" = "foci"))
 
-ggplot(run_summary, aes(x = t/365.25, ymin = LQ, ymax = UQ, fill = id)) +
-  geom_ribbon(alpha = 0.3) +
-  geom_line(aes(y = median, color = id)) +
-  scale_x_continuous(expand = c(0, 0), breaks=seq(0, floor(max(run_summary$t)))) +
-  scale_y_continuous(limits = c(0, NA), labels = scales::label_percent()) +
-  facet_wrap(vars(name), ncol = 1) +
-  labs(x = "Years", y = "Prevalence", color = "Intervention", fill = "Intervention") +
-  theme(plot.background = element_rect(fill = "transparent",
-                                       color = NA))
+p_shared_elements = list(
+  geom_ribbon(alpha = 0.3),
+  geom_line(aes(y = mean, color = id)),
+  scale_x_continuous(expand = c(0, 0), breaks=seq(0, floor(max(run_summary$t)))),
+  labs(x = "Year", y = NULL, color = "Intervention", fill = "Intervention"),
+  facet_wrap(vars(name), ncol = 1),
+  theme(plot.background = element_rect(fill = "transparent", color = NA))
+)
+
+(run_summary %>%
+    filter(name %>% str_detect(c("Blood|Liver"))) %>%
+    ggplot(aes(x = t/365.25, ymin = LQ, ymax = UQ, fill = id)) +
+    scale_y_continuous(limits = c(0, NA), labels = scales::label_percent()) +
+    theme(axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          axis.title.x = element_blank()) +
+  p_shared_elements) /
+  (run_summary %>%
+     filter(name %>% str_detect("reactive")) %>%
+     ggplot(aes(x = t/365.25, ymin = LQ, ymax = UQ, fill = id)) +
+     p_shared_elements +
+     scale_y_continuous(limits = c(0, NA))) +
+  plot_layout(guides = "collect", heights=c(2,1))
+
 
 # ggsave("~/Downloads/plot.pdf", width=8, height=3, bg="transparent")
 # 
